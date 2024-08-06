@@ -72,7 +72,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     ).data[0].embedding
 
                 with get_db_connection() as (conn, cursor):
-                    cursor.execute(get_search_query(INDEX_TYPE, category), (question_vector, top_n))
+                    cursor.execute(get_search_query(INDEX_TYPE), (question_vector, category, top_n))
                     results = cursor.fetchall()
                     conn.commit()
 
@@ -98,8 +98,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Generate AI response
                 if chunk_texts:
                     formatted_prompt = f"""
-                    以下のユーザーの質問に対して、参考文書を元に回答して下さい。
-                    参考文書が1つも存在しない場合はそのことをユーザーに伝えて下さい。
+                    ユーザーの質問に対して、参考文書を元に回答して下さい。
 
                     ユーザーの質問：
                     {question}

@@ -34,7 +34,6 @@ def get_db_connection():
             logger.info("Database connection closed")
 
 def create_table_and_index(cursor):
-    table_name = EMBEDDINGS_TABLE_NAME
     create_table_query = sql.SQL("""
     CREATE TABLE IF NOT EXISTS {} (
         id SERIAL PRIMARY KEY,
@@ -49,11 +48,11 @@ def create_table_and_index(cursor):
         created_date_time TIMESTAMPTZ,
         chunk_vector vector(3072)
     );
-    """).format(sql.Identifier(table_name))
+    """).format(sql.Identifier(EMBEDDINGS_TABLE_NAME))
 
     try:
         cursor.execute(create_table_query)
-        logger.info(f"Table {table_name} created successfully")
+        logger.info(f"Table {EMBEDDINGS_TABLE_NAME} created successfully")
 
         if INDEX_TYPE == "hnsw":
             create_index_query = sql.SQL("""
@@ -61,31 +60,30 @@ def create_table_and_index(cursor):
             USING hnsw ((chunk_vector::halfvec(3072)) halfvec_ip_ops)
             WITH (m = {}, ef_construction = {});
             """).format(
-                sql.Identifier(f"hnsw_{table_name}_chunk_vector_idx"),
-                sql.Identifier(table_name),
+                sql.Identifier(f"hnsw_{EMBEDDINGS_TABLE_NAME}_chunk_vector_idx"),
+                sql.Identifier(EMBEDDINGS_TABLE_NAME),
                 sql.Literal(HNSW_M),
                 sql.Literal(HNSW_EF_CONSTRUCTION)
             )
             cursor.execute(create_index_query)
-            logger.info(f"HNSW index created successfully for {table_name} with parameters: m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION}")
+            logger.info(f"HNSW index created successfully for {EMBEDDINGS_TABLE_NAME} with parameters: m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION}")
         elif INDEX_TYPE == "none":
-            logger.info(f"No index created for {table_name} as per configuration")
+            logger.info(f"No index created for {EMBEDDINGS_TABLE_NAME} as per configuration")
         else:
             raise ValueError(f"Unsupported index type: {INDEX_TYPE}")
     except psycopg.Error as e:
-        logger.error(f"Error creating table or index for {table_name}: {e}")
+        logger.error(f"Error creating table or index for {EMBEDDINGS_TABLE_NAME}: {e}")
         raise
 
 def process_csv_file(file_path, cursor, category):
     logger.info(f"Processing CSV file: {file_path}")
     df = pd.read_csv(file_path)
 
-    table_name = "document_embeddings"
     insert_query = sql.SQL("""
     INSERT INTO {}
     (file_name, business_category, document_page, chunk_no, chunk_text, model, prompt_tokens, total_tokens, created_date_time, chunk_vector)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072));
-    """).format(sql.Identifier(table_name))
+    """).format(sql.Identifier(EMBEDDINGS_TABLE_NAME))
 
     data = []
     for _, row in df.iterrows():
@@ -104,9 +102,9 @@ def process_csv_file(file_path, cursor, category):
 
     try:
         cursor.executemany(insert_query, data)
-        logger.info(f"Inserted {len(data)} rows into the {table_name} table")
+        logger.info(f"Inserted {len(data)} rows into the {EMBEDDINGS_TABLE_NAME} table")
     except Exception as e:
-        logger.error(f"Error inserting batch into {table_name}: {e}")
+        logger.error(f"Error inserting batch into {EMBEDDINGS_TABLE_NAME}: {e}")
         raise
 
 def process_csv_files():
