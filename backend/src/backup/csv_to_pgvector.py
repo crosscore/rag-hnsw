@@ -6,7 +6,6 @@ from psycopg import sql
 from config import *
 import logging
 from contextlib import contextmanager
-import uuid
 
 log_dir = "/app/data/log"
 os.makedirs(log_dir, exist_ok=True)
@@ -38,12 +37,14 @@ def create_table_and_index(cursor):
     create_table_query = sql.SQL("""
     CREATE TABLE IF NOT EXISTS {} (
         id SERIAL PRIMARY KEY,
-        document_id UUID NOT NULL,
         file_name TEXT,
         business_category TEXT,
         document_page SMALLINT,
         chunk_no INTEGER,
         chunk_text TEXT,
+        model TEXT,
+        prompt_tokens INTEGER,
+        total_tokens INTEGER,
         created_date_time TIMESTAMPTZ,
         chunk_vector vector(3072)
     );
@@ -80,8 +81,8 @@ def process_csv_file(file_path, cursor, category):
 
     insert_query = sql.SQL("""
     INSERT INTO {}
-    (document_id, file_name, business_category, document_page, chunk_no, chunk_text, created_date_time, chunk_vector)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s::vector(3072));
+    (file_name, business_category, document_page, chunk_no, chunk_text, model, prompt_tokens, total_tokens, created_date_time, chunk_vector)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072));
     """).format(sql.Identifier(EMBEDDINGS_TABLE_NAME))
 
     data = []
@@ -94,9 +95,8 @@ def process_csv_file(file_path, cursor, category):
             continue
 
         data.append((
-            uuid.uuid4(),  # Generate a new UUID for each row
             row['file_name'], category, row['document_page'], row['chunk_no'], row['chunk_text'],
-            row['created_date_time'],
+            row['model'], row['prompt_tokens'], row['total_tokens'], row['created_date_time'],
             embedding
         ))
 

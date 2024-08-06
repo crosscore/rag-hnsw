@@ -7,7 +7,6 @@ import logging
 from config import *
 from langchain_text_splitters import CharacterTextSplitter
 from datetime import datetime, timezone
-import uuid
 
 log_filedir = "/app/data/log/"
 os.makedirs(log_filedir, exist_ok=True)
@@ -75,7 +74,6 @@ def process_pdf(file_path, category):
 
     processed_data = []
     total_chunks = 0
-    document_id = str(uuid.uuid4())  # Generate a single UUID for the entire document
     for page in pages:
         page_text = page["page_content"]
         page_num = page["metadata"]["page"]
@@ -90,12 +88,14 @@ def process_pdf(file_path, category):
                 current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
                 total_chunks += 1
                 processed_data.append({
-                    'document_id': document_id,
                     'file_name': os.path.basename(file_path),
                     'business_category': category,
                     'document_page': str(page_num),
                     'chunk_no': total_chunks,
                     'chunk_text': chunk,
+                    'model': response.model,
+                    'prompt_tokens': response.usage.prompt_tokens,
+                    'total_tokens': response.usage.total_tokens,
                     'created_date_time': current_time,
                     'chunk_vector': response.data[0].embedding
                 })
