@@ -7,7 +7,6 @@ import logging
 from config import *
 from langchain_text_splitters import CharacterTextSplitter
 from datetime import datetime, timezone
-import uuid
 import hashlib
 
 log_filedir = "/app/data/log/"
