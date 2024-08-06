@@ -46,6 +46,9 @@ HNSW_M = int(os.getenv("HNSW_M", "16"))
 HNSW_EF_CONSTRUCTION = int(os.getenv("HNSW_EF_CONSTRUCTION", "256"))
 HNSW_EF_SEARCH = int(os.getenv("HNSW_EF_SEARCH", "500"))
 
+# PostgreSQLテーブル設定
+EMBEDDINGS_TABLE_NAME = os.getenv("EMBEDDINGS_TABLE_NAME")
+
 # その他の設定
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
 POSTGRES_CONTAINER_NAME = os.getenv("POSTGRES_CONTAINER_NAME", "pgvector_db")

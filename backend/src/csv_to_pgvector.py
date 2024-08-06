@@ -33,7 +33,8 @@ def get_db_connection():
             conn.close()
             logger.info("Database connection closed")
 
-def create_table_and_index(cursor, table_name):
+def create_table_and_index(cursor):
+    table_name = EMBEDDINGS_TABLE_NAME
     create_table_query = sql.SQL("""
     CREATE TABLE IF NOT EXISTS {} (
         id SERIAL PRIMARY KEY,
@@ -75,10 +76,11 @@ def create_table_and_index(cursor, table_name):
         logger.error(f"Error creating table or index for {table_name}: {e}")
         raise
 
-def process_csv_file(file_path, cursor, table_name):
+def process_csv_file(file_path, cursor, category):
     logger.info(f"Processing CSV file: {file_path}")
     df = pd.read_csv(file_path)
 
+    table_name = "document_embeddings"
     insert_query = sql.SQL("""
     INSERT INTO {}
     (file_name, business_category, document_page, chunk_no, chunk_text, model, prompt_tokens, total_tokens, created_date_time, chunk_vector)
@@ -95,7 +97,7 @@ def process_csv_file(file_path, cursor, table_name):
             continue
 
         data.append((
-            row['file_name'], row['business_category'], row['document_page'], row['chunk_no'], row['chunk_text'],
+            row['file_name'], category, row['document_page'], row['chunk_no'], row['chunk_text'],
             row['model'], row['prompt_tokens'], row['total_tokens'], row['created_date_time'],
             embedding
         ))
@@ -111,11 +113,11 @@ def process_csv_files():
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
+                create_table_and_index(cursor)
                 for category in os.listdir(CSV_OUTPUT_DIR):
                     category_dir = os.path.join(CSV_OUTPUT_DIR, category)
                     if os.path.isdir(category_dir):
                         logger.info(f"Processing category: {category}")
-                        create_table_and_index(cursor, category)
                         for file in os.listdir(category_dir):
                             if file.endswith('.csv'):
                                 csv_file_path = os.path.join(category_dir, file)
