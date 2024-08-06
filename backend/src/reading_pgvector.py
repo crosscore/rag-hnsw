@@ -3,7 +3,6 @@ import os
 import logging
 import psycopg
 from psycopg.rows import dict_row
-import re
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
@@ -17,31 +16,18 @@ def get_db_connection():
         'port': os.getenv('PGVECTOR_DB_PORT')
     }
     logger.info(f"Attempting to connect to database with params: {db_params}")
-    return psycopg.connect(
-        **db_params,
-        options="-c timezone=Asia/Tokyo",
-        row_factory=dict_row
-    )
+    return psycopg.connect(**db_params, options="-c timezone=Asia/Tokyo", row_factory=dict_row)
 
-def sanitize_table_name(name):
-    # Remove any character that isn't alphanumeric or underscore
-    sanitized = re.sub(r'\W+', '_', name)
-    # Ensure the name starts with a letter
-    if not sanitized[0].isalpha():
-        sanitized = "t_" + sanitized
-    return sanitized.lower()
-
-def get_table_structure(cursor, table_name):
-    sanitized_name = sanitize_table_name(table_name)
+def get_table_info(cursor, table_name):
+    # Get table structure
     cursor.execute("""
     SELECT column_name, data_type
     FROM information_schema.columns
     WHERE table_name = %s;
-    """, (sanitized_name,))
-    return cursor.fetchall()
+    """, (table_name,))
+    structure = cursor.fetchall()
 
-def get_index_info(cursor, table_name):
-    sanitized_name = sanitize_table_name(table_name)
+    # Get index information
     cursor.execute("""
     SELECT
         i.relname AS index_name,
@@ -58,31 +44,23 @@ def get_index_info(cursor, table_name):
         t.relname = %s
     ORDER BY
         i.relname, a.attnum;
-    """, (sanitized_name,))
-    return cursor.fetchall()
+    """, (table_name,))
+    indexes = cursor.fetchall()
 
-def log_sample_data(cursor, table_name):
-    sanitized_name = sanitize_table_name(table_name)
-    cursor.execute(f"SELECT * FROM {sanitized_name} LIMIT 1;")
-    rows = cursor.fetchall()
-    if rows:
-        logger.info("------ Sample Data ------")
-        for row in rows:
-            formatted_row = {}
-            for key, value in row.items():
-                if key == 'chunk_vector':
-                    logger.info(f"Type of chunk_vector: {type(value)}")
-                    formatted_row[key] = value[:27] + " ...]" if len(value) > 20 else value
-                else:
-                    formatted_row[key] = value
-            logger.info(formatted_row)
-    else:
-        logger.warning(f"No sample data found for {table_name}.")
+    # Get sample data
+    cursor.execute(f"SELECT * FROM {table_name} LIMIT 1;")
+    sample = cursor.fetchone()
 
-def get_record_count(cursor, table_name):
-    sanitized_name = sanitize_table_name(table_name)
-    cursor.execute(f"SELECT COUNT(*) FROM {sanitized_name};")
-    return cursor.fetchone()['count']
+    # Get record count
+    cursor.execute(f"SELECT COUNT(*) FROM {table_name};")
+    count = cursor.fetchone()['count']
+
+    return {
+        'structure': structure,
+        'indexes': indexes,
+        'sample': sample,
+        'count': count
+    }
 
 def get_all_tables(cursor):
     cursor.execute("""
@@ -91,19 +69,6 @@ def get_all_tables(cursor):
     WHERE table_schema = 'public';
     """)
     return [row['table_name'] for row in cursor.fetchall()]
-
-def get_table_summary(cursor):
-    tables = get_all_tables(cursor)
-    summary = []
-    for table in tables:
-        record_count = get_record_count(cursor, table)
-        summary.append((table, record_count))
-    return summary
-
-def print_table_summary(summary):
-    logger.info("\n------ Table Summary ------")
-    for table_name, record_count in summary:
-        logger.info(f"Table: {table_name}, Records: {record_count}")
 
 def get_unique_business_categories_with_counts(cursor):
     cursor.execute("""
@@ -114,72 +79,63 @@ def get_unique_business_categories_with_counts(cursor):
     """)
     return cursor.fetchall()
 
-def print_unique_business_categories_with_counts(categories_with_counts):
-    logger.info("\n------ Unique Business Categories with Record Counts ------")
-    total_records = sum(category['record_count'] for category in categories_with_counts)
-    for category in categories_with_counts:
-        percentage = (category['record_count'] / total_records) * 100
-        logger.info(f"  - {category['business_category']}: {category['record_count']} records ({percentage:.2f}%)")
-    logger.info(f"\nTotal records across all categories: {total_records}")
+def print_table_info(table_name, info):
+    logger.info(f"\n######### Table: {table_name} #########")
+
+    logger.info("------ Table Structure ------")
+    for column in info['structure']:
+        logger.info(f"  - {column['column_name']}: {column['data_type']}")
+
+    logger.info("\n------ Index Information ------")
+    for index in info['indexes']:
+        logger.info(f"Index Name: {index['index_name']}")
+        logger.info(f"  Column: {index['column_name']}")
+        logger.info(f"  Type: {index['index_type']}")
+        logger.info(f"  Definition: {index['index_definition']}")
+        logger.info("  ---")
+
+    logger.info("------ Sample Data ------")
+    if info['sample']:
+        formatted_sample = {k: (v[:27] + " ...]" if k == 'chunk_vector' and len(str(v)) > 30 else v) for k, v in info['sample'].items()}
+        logger.info(formatted_sample)
+    else:
+        logger.warning("No sample data found.")
 
 def main():
-    conn = None
-    cursor = None
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                tables = get_all_tables(cursor)
 
-        tables = get_all_tables(cursor)
+                if not tables:
+                    logger.warning("No tables found in the database.")
+                else:
+                    logger.info(f"Found {len(tables)} tables in the database.")
 
-        if not tables:
-            logger.warning("No tables found in the database.")
-        else:
-            logger.info(f"Found {len(tables)} tables in the database.")
+                table_summary = []
+                for table_name in tables:
+                    info = get_table_info(cursor, table_name)
+                    print_table_info(table_name, info)
+                    table_summary.append((table_name, info['count']))
 
-        for table_name in tables:
-            logger.info(f"\n######### Table: {table_name} #########")
+                logger.info("\n------ Table Summary ------")
+                for table_name, record_count in table_summary:
+                    logger.info(f"Table: {table_name}, Records: {record_count}")
 
-            table_structure = get_table_structure(cursor, table_name)
-            logger.info("------ Table Structure ------")
-            if table_structure:
-                for column in table_structure:
-                    logger.info(f"  - {column['column_name']}: {column['data_type']}")
-            else:
-                logger.warning(f"No table structure information found for {table_name}.")
-
-            logger.info("\n------ Index Information ------")
-            index_info = get_index_info(cursor, table_name)
-            if index_info:
-                for index in index_info:
-                    logger.info(f"Index Name: {index['index_name']}")
-                    logger.info(f"  Column: {index['column_name']}")
-                    logger.info(f"  Type: {index['index_type']}")
-                    logger.info(f"  Definition: {index['index_definition']}")
-                    logger.info("  ---")
-            else:
-                logger.warning(f"No index information found for {table_name}.")
-
-            log_sample_data(cursor, table_name)
-
-            record_count = get_record_count(cursor, table_name)
-            logger.info(f"\n------ Record Count ------")
-            logger.info(f"Total record count for {table_name} table: {record_count}")
-
-        table_summary = get_table_summary(cursor)
-        print_table_summary(table_summary)
-        categories_with_counts = get_unique_business_categories_with_counts(cursor)
-        print_unique_business_categories_with_counts(categories_with_counts)
+                categories_with_counts = get_unique_business_categories_with_counts(cursor)
+                if categories_with_counts:
+                    logger.info("\n------ Unique Business Categories with Record Counts ------")
+                    total_records = sum(category['record_count'] for category in categories_with_counts)
+                    for category in categories_with_counts:
+                        percentage = (category['record_count'] / total_records) * 100
+                        logger.info(f"  - {category['business_category']}: {category['record_count']} records ({percentage:.2f}%)")
+                    logger.info(f"\nTotal records across all categories: {total_records}")
 
         logger.info("\nDatabase reading completed.")
     except psycopg.Error as e:
         logger.error(f"Database error occurred: {e}")
     except Exception as e:
         logger.error(f"Unexpected error occurred: {e}", exc_info=True)
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
 
 if __name__ == "__main__":
     main()
