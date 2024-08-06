@@ -1,5 +1,4 @@
 # rag-hnsw/backend/src/vectorizer.py
-# rag-hnsw/backend/src/vectorizer.py
 import os
 import pandas as pd
 from pypdf import PdfReader
