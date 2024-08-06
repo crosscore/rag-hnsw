@@ -112,7 +112,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
                         temperature=1.00,
-                        max_tokens=150,
+                        max_tokens=100,
                         messages=[
                             {"role": "system", "content": "You are a helpful assistant."},
                             {"role": "user", "content": formatted_prompt}

@@ -105,6 +105,23 @@ def print_table_summary(summary):
     for table_name, record_count in summary:
         logger.info(f"Table: {table_name}, Records: {record_count}")
 
+def get_unique_business_categories_with_counts(cursor):
+    cursor.execute("""
+    SELECT business_category, COUNT(*) as record_count
+    FROM document_embeddings
+    GROUP BY business_category
+    ORDER BY business_category;
+    """)
+    return cursor.fetchall()
+
+def print_unique_business_categories_with_counts(categories_with_counts):
+    logger.info("\n------ Unique Business Categories with Record Counts ------")
+    total_records = sum(category['record_count'] for category in categories_with_counts)
+    for category in categories_with_counts:
+        percentage = (category['record_count'] / total_records) * 100
+        logger.info(f"  - {category['business_category']}: {category['record_count']} records ({percentage:.2f}%)")
+    logger.info(f"\nTotal records across all categories: {total_records}")
+
 def main():
     conn = None
     cursor = None
@@ -150,6 +167,8 @@ def main():
 
         table_summary = get_table_summary(cursor)
         print_table_summary(table_summary)
+        categories_with_counts = get_unique_business_categories_with_counts(cursor)
+        print_unique_business_categories_with_counts(categories_with_counts)
 
         logger.info("\nDatabase reading completed.")
     except psycopg.Error as e:
