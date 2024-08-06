@@ -1,4 +1,5 @@
 # rag-hnsw/backend/src/vectorizer.py
+# rag-hnsw/backend/src/vectorizer.py
 import os
 import pandas as pd
 from pypdf import PdfReader
@@ -8,6 +9,7 @@ from config import *
 from langchain_text_splitters import CharacterTextSplitter
 from datetime import datetime, timezone
 import uuid
+import hashlib
 
 log_filedir = "/app/data/log/"
 os.makedirs(log_filedir, exist_ok=True)
@@ -67,6 +69,13 @@ def split_text_into_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks if chunks else [text]
 
+def calculate_md5(file_path):
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
 def process_pdf(file_path, category):
     pages = extract_text_from_pdf(file_path)
     if not pages:
@@ -75,7 +84,8 @@ def process_pdf(file_path, category):
 
     processed_data = []
     total_chunks = 0
-    document_id = str(uuid.uuid4())  # Generate a single UUID for the entire document
+    md5_hash = calculate_md5(file_path)
+
     for page in pages:
         page_text = page["page_content"]
         page_num = page["metadata"]["page"]
@@ -90,8 +100,9 @@ def process_pdf(file_path, category):
                 current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
                 total_chunks += 1
                 processed_data.append({
-                    'document_id': document_id,
                     'file_name': os.path.basename(file_path),
+                    'file_path': file_path,
+                    'md5_hash': md5_hash,
                     'business_category': category,
                     'document_page': str(page_num),
                     'chunk_no': total_chunks,
