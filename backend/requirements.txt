@@ -1,0 +1,12 @@
+# rag-hnsw/backend/requirements.txt
+openai
+langchain-text-splitters
+python-dotenv
+boto3
+pypdf
+psycopg[binary]
+pandas
+
+fastapi
+uvicorn
+websockets

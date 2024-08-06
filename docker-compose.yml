@@ -1,0 +1,66 @@
+# rag-hnsw/docker-compose.yml
+
+services:
+    frontend:
+        container_name: frontend
+        build: ./frontend
+        env_file:
+            - .env
+        environment:
+            - PYTHONPATH=/app:${PYTHONPATH:-}
+            - TZ=Asia/Tokyo
+            - BACKEND_URL=ws://backend:8001
+        volumes:
+            - ./frontend:/app
+            - /var/run/docker.sock:/var/run/docker.sock
+        ports:
+            - "8000:8000"
+        depends_on:
+            - backend
+        networks:
+            - app_network
+        command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+    backend:
+        container_name: backend
+        build: ./backend
+        env_file:
+            - .env
+        environment:
+            - PYTHONPATH=/app:${PYTHONPATH:-}
+            - TZ=Asia/Tokyo
+            - POSTGRES_CONTAINER_NAME=pgvector_db
+        volumes:
+            - ./backend:/app
+            - /var/run/docker.sock:/var/run/docker.sock
+        ports:
+            - "8001:8001"
+        depends_on:
+            - pgvector_db
+        networks:
+            - app_network
+        command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+
+    pgvector_db:
+        container_name: pgvector_db
+        build: ./pgvector_db
+        env_file:
+            - .env
+        environment:
+            - POSTGRES_DB=${PGVECTOR_DB_NAME}
+            - POSTGRES_USER=${PGVECTOR_DB_USER}
+            - POSTGRES_PASSWORD=${PGVECTOR_DB_PASSWORD}
+            - PGTZ=Asia/Tokyo
+        volumes:
+            - pg_data:/var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        networks:
+            - app_network
+
+networks:
+    app_network:
+        driver: bridge
+
+volumes:
+    pg_data:
