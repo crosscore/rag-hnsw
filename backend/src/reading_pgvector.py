@@ -3,17 +3,18 @@ import os
 import logging
 import psycopg
 from psycopg.rows import dict_row
+from config import *
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 def get_db_connection():
     db_params = {
-        'dbname': os.getenv('PGVECTOR_DB_NAME'),
-        'user': os.getenv('PGVECTOR_DB_USER'),
-        'password': os.getenv('PGVECTOR_DB_PASSWORD'),
-        'host': os.getenv('PGVECTOR_DB_HOST'),
-        'port': os.getenv('PGVECTOR_DB_PORT')
+        'dbname': PGVECTOR_DB_NAME,
+        'user': PGVECTOR_DB_USER,
+        'password': PGVECTOR_DB_PASSWORD,
+        'host': PGVECTOR_DB_HOST,
+        'port': PGVECTOR_DB_PORT
     }
     logger.info(f"Attempting to connect to database with params: {db_params}")
     return psycopg.connect(**db_params, options="-c timezone=Asia/Tokyo", row_factory=dict_row)
@@ -70,10 +71,10 @@ def get_all_tables(cursor):
     """)
     return [row['table_name'] for row in cursor.fetchall()]
 
-def get_unique_business_categories_with_counts(cursor):
-    cursor.execute("""
+def get_unique_business_categories_with_counts(cursor, table_name):
+    cursor.execute(f"""
     SELECT business_category, COUNT(*) as record_count
-    FROM document_embeddings
+    FROM {table_name}
     GROUP BY business_category
     ORDER BY business_category;
     """)
@@ -96,7 +97,7 @@ def print_table_info(table_name, info):
 
     logger.info("------ Sample Data ------")
     if info['sample']:
-        formatted_sample = {k: (v[:27] + " ...]" if k == 'chunk_vector' and len(str(v)) > 30 else v) for k, v in info['sample'].items()}
+        formatted_sample = {k: (v[:27] + " ...]" if k == 'embedding' and len(str(v)) > 30 else v) for k, v in info['sample'].items()}
         logger.info(formatted_sample)
     else:
         logger.warning("No sample data found.")
@@ -118,18 +119,20 @@ def main():
                     print_table_info(table_name, info)
                     table_summary.append((table_name, info['count']))
 
+                    # Get business categories for each table
+                    if 'business_category' in [col['column_name'] for col in info['structure']]:
+                        categories_with_counts = get_unique_business_categories_with_counts(cursor, table_name)
+                        if categories_with_counts:
+                            logger.info(f"\n------ Unique Business Categories with Record Counts for {table_name} ------")
+                            total_records = sum(category['record_count'] for category in categories_with_counts)
+                            for category in categories_with_counts:
+                                percentage = (category['record_count'] / total_records) * 100
+                                logger.info(f"  - {category['business_category']}: {category['record_count']} records ({percentage:.2f}%)")
+                            logger.info(f"\nTotal records across all categories in {table_name}: {total_records}")
+
                 logger.info("\n------ Table Summary ------")
                 for table_name, record_count in table_summary:
                     logger.info(f"Table: {table_name}, Records: {record_count}")
-
-                categories_with_counts = get_unique_business_categories_with_counts(cursor)
-                if categories_with_counts:
-                    logger.info("\n------ Unique Business Categories with Record Counts ------")
-                    total_records = sum(category['record_count'] for category in categories_with_counts)
-                    for category in categories_with_counts:
-                        percentage = (category['record_count'] / total_records) * 100
-                        logger.info(f"  - {category['business_category']}: {category['record_count']} records ({percentage:.2f}%)")
-                    logger.info(f"\nTotal records across all categories: {total_records}")
 
         logger.info("\nDatabase reading completed.")
     except psycopg.Error as e:

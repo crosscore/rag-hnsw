@@ -5,7 +5,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y iputils-ping tzdata postgresql-client docker.io && \
+    apt-get install -y iputils-ping tzdata postgresql-client coreutils && \
     rm -rf /var/lib/apt/lists/*
 
 ENV TZ=Asia/Tokyo

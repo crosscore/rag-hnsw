@@ -47,7 +47,12 @@ HNSW_EF_CONSTRUCTION = int(os.getenv("HNSW_EF_CONSTRUCTION", "256"))
 HNSW_EF_SEARCH = int(os.getenv("HNSW_EF_SEARCH", "500"))
 
 # PostgreSQLテーブル設定
-EMBEDDINGS_TABLE_NAME = os.getenv("EMBEDDINGS_TABLE_NAME")
+MANUAL_TABLE_NAME = os.getenv("MANUAL_TABLE_NAME", "manual_embeddings")
+FAQ_TABLE_NAME = os.getenv("FAQ_TABLE_NAME", "faq_embeddings")
+
+# CSV ファイルのディレクトリパス
+CSV_MANUAL_DIR = os.path.join(CSV_OUTPUT_DIR, "manual")
+CSV_FAQ_DIR = os.path.join(CSV_OUTPUT_DIR, "faq")
 
 # その他の設定
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
