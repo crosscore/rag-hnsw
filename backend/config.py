@@ -13,6 +13,7 @@ AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
 AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT")
 AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
+MODEL_GPT4o_DEPLOY_NAME = os.getenv("MODEL_GPT4o_DEPLOY_NAME", "gpt40o_20240705")
 
 # AWS credentials and region
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
@@ -33,12 +34,12 @@ SEPARATOR = os.getenv("SEPARATOR", "\n\n")
 PDF_INPUT_DIR = os.getenv("PDF_INPUT_DIR", '/app/data/pdf')
 CSV_OUTPUT_DIR = os.getenv("CSV_OUTPUT_DIR", '/app/data/csv')
 
-# pgvector_db
-PGVECTOR_DB_NAME = os.getenv("PGVECTOR_DB_NAME")
-PGVECTOR_DB_USER = os.getenv("PGVECTOR_DB_USER")
-PGVECTOR_DB_PASSWORD = os.getenv("PGVECTOR_DB_PASSWORD")
-PGVECTOR_DB_HOST = os.getenv("PGVECTOR_DB_HOST", "pgvector_db")
-PGVECTOR_DB_PORT = int(os.getenv("PGVECTOR_DB_PORT", 5432))
+# POSTGRES
+POSTGRES_DB = os.getenv("POSTGRES_DB", "aurora")
+POSTGRES_USER = os.getenv("POSTGRES_USER", "user")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "pass")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "api1_aurora")
+POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", 5432))
 
 # インデックス設定
 INDEX_TYPE = os.getenv("INDEX_TYPE", "hnsw").lower()
@@ -50,11 +51,11 @@ HNSW_EF_SEARCH = int(os.getenv("HNSW_EF_SEARCH", "500"))
 MANUAL_TABLE_NAME = os.getenv("MANUAL_TABLE_NAME", "manual_embeddings")
 FAQ_TABLE_NAME = os.getenv("FAQ_TABLE_NAME", "faq_embeddings")
 
-# CSV ファイルのディレクトリパス
+# CSV directory PATH
 CSV_MANUAL_DIR = os.path.join(CSV_OUTPUT_DIR, "manual")
 CSV_FAQ_DIR = os.path.join(CSV_OUTPUT_DIR, "faq")
 
 # その他の設定
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
-POSTGRES_CONTAINER_NAME = os.getenv("POSTGRES_CONTAINER_NAME", "pgvector_db")
+POSTGRES_CONTAINER_NAME = os.getenv("POSTGRES_CONTAINER_NAME", "api1_aurora")
 PIPELINE_EXECUTION_MODE = os.getenv("PIPELINE_EXECUTION_MODE", "csv_to_pgvector")

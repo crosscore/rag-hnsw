@@ -73,6 +73,13 @@ def create_embedding(text):
         logger.error(traceback.format_exc())
         return None
 
+def calculate_sha256(file_path):
+    hash_sha256 = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_sha256.update(chunk)
+    return hash_sha256.hexdigest()
+
 def split_text_into_chunks(text):
     text_splitter = CharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
@@ -80,16 +87,11 @@ def split_text_into_chunks(text):
         separator=SEPARATOR
     )
     chunks = text_splitter.split_text(text)
-    chunks = chunks if chunks else [text]
+    if not chunks:
+        logger.warning(f"Text splitting resulted in no chunks. Using full text as a single chunk.")
+        chunks = [text]
     logger.debug(f"Split text into {len(chunks)} chunks")
     return chunks
-
-def calculate_sha256(file_path):
-    hash_sha256 = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_sha256.update(chunk)
-    return hash_sha256.hexdigest()
 
 def process_pdf(file_path, category):
     logger.info(f"Processing PDF: {file_path}")
@@ -144,7 +146,7 @@ def process_pdf_files():
                 output_file = os.path.join(output_dir, csv_file_name)
 
                 processed_data.to_csv(output_file, index=False)
-                logger.info(f"CSV output completed for {csv_file_name} in path {relative_path}")
+                logger.info(f"CSV output completed for {csv_file_name} in path {output_file}")
             else:
                 logger.warning(f"No data processed for {file_path}")
         except Exception as e:
@@ -153,6 +155,8 @@ def process_pdf_files():
 
 if __name__ == "__main__":
     try:
+        logger.info(f"PDF_INPUT_DIR: {PDF_INPUT_DIR}")
+        logger.info(f"CSV_OUTPUT_DIR: {CSV_OUTPUT_DIR}")
         process_pdf_files()
         logger.info("PDF processing completed successfully")
     except Exception as e:

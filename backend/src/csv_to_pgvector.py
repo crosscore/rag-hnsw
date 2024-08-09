@@ -17,13 +17,13 @@ def get_db_connection():
     conn = None
     try:
         conn = psycopg.connect(
-            dbname=PGVECTOR_DB_NAME,
-            user=PGVECTOR_DB_USER,
-            password=PGVECTOR_DB_PASSWORD,
-            host=PGVECTOR_DB_HOST,
-            port=PGVECTOR_DB_PORT
+            dbname=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT
         )
-        logger.info(f"Connected to database: {PGVECTOR_DB_HOST}:{PGVECTOR_DB_PORT}")
+        logger.info(f"Connected to database: {POSTGRES_HOST}:{POSTGRES_PORT}")
         yield conn
     except (KeyError, psycopg.Error) as e:
         logger.error(f"Database connection error: {e}")
@@ -33,7 +33,7 @@ def get_db_connection():
             conn.close()
             logger.info("Database connection closed")
 
-def create_table_and_index(cursor, table_name):
+def create_table_and_index(cursor):
     create_table_query = sql.SQL("""
     CREATE TABLE IF NOT EXISTS {} (
         id SERIAL PRIMARY KEY,
@@ -47,11 +47,11 @@ def create_table_and_index(cursor, table_name):
         created_date_time TIMESTAMPTZ,
         embedding vector(3072)
     );
-    """).format(sql.Identifier(table_name))
+    """).format(sql.Identifier(MANUAL_TABLE_NAME))
 
     try:
         cursor.execute(create_table_query)
-        logger.info(f"Table {table_name} created successfully")
+        logger.info(f"Table {MANUAL_TABLE_NAME} created successfully")
 
         if INDEX_TYPE == "hnsw":
             create_index_query = sql.SQL("""
@@ -59,22 +59,20 @@ def create_table_and_index(cursor, table_name):
             USING hnsw ((embedding::halfvec(3072)) halfvec_ip_ops)
             WITH (m = {}, ef_construction = {});
             """).format(
-                sql.Identifier(f"hnsw_{table_name}_embedding_idx"),
-                sql.Identifier(table_name),
+                sql.Identifier(f"hnsw_{MANUAL_TABLE_NAME}_embedding_idx"),
+                sql.Identifier(MANUAL_TABLE_NAME),
                 sql.Literal(HNSW_M),
                 sql.Literal(HNSW_EF_CONSTRUCTION)
             )
             cursor.execute(create_index_query)
-            logger.info(f"HNSW index created successfully for {table_name} with parameters: m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION}")
-        elif INDEX_TYPE == "none":
-            logger.info(f"No index created for {table_name} as per configuration")
+            logger.info(f"HNSW index created successfully for {MANUAL_TABLE_NAME} with parameters: m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION}")
         else:
-            raise ValueError(f"Unsupported index type: {INDEX_TYPE}")
+            logger.info(f"No index created for {MANUAL_TABLE_NAME} as per configuration")
     except psycopg.Error as e:
-        logger.error(f"Error creating table or index for {table_name}: {e}")
+        logger.error(f"Error creating table or index for {MANUAL_TABLE_NAME}: {e}")
         raise
 
-def process_csv_file(file_path, cursor, category, table_name):
+def process_csv_file(file_path, cursor, category):
     logger.info(f"Processing CSV file: {file_path}")
     df = pd.read_csv(file_path)
 
@@ -82,7 +80,7 @@ def process_csv_file(file_path, cursor, category, table_name):
     INSERT INTO {}
     (file_name, file_path, sha256_hash, business_category, document_page, chunk_no, chunk_text, created_date_time, embedding)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072));
-    """).format(sql.Identifier(table_name))
+    """).format(sql.Identifier(MANUAL_TABLE_NAME))
 
     data = []
     for _, row in df.iterrows():
@@ -107,9 +105,9 @@ def process_csv_file(file_path, cursor, category, table_name):
 
     try:
         cursor.executemany(insert_query, data)
-        logger.info(f"Inserted {len(data)} rows into the {table_name} table")
+        logger.info(f"Inserted {len(data)} rows into the {MANUAL_TABLE_NAME} table")
     except Exception as e:
-        logger.error(f"Error inserting batch into {table_name}: {e}")
+        logger.error(f"Error inserting batch into {MANUAL_TABLE_NAME}: {e}")
         raise
 
 def process_csv_files():
@@ -119,7 +117,7 @@ def process_csv_files():
                 # Manual処理
                 if os.path.exists(CSV_MANUAL_DIR):
                     logger.info(f"CSV_MANUAL_DIR exists: {CSV_MANUAL_DIR}")
-                    create_table_and_index(cursor, MANUAL_TABLE_NAME)
+                    create_table_and_index(cursor)
                     csv_files = []
                     for root, dirs, files in os.walk(CSV_MANUAL_DIR):
                         csv_files.extend([os.path.join(root, file) for file in files if file.endswith('.csv')])
@@ -127,7 +125,7 @@ def process_csv_files():
                     for csv_file_path in csv_files:
                         try:
                             category = os.path.relpath(os.path.dirname(csv_file_path), CSV_MANUAL_DIR)
-                            process_csv_file(csv_file_path, cursor, category, MANUAL_TABLE_NAME)
+                            process_csv_file(csv_file_path, cursor, category)
                             conn.commit()
                             logger.info(f"Successfully processed and committed {csv_file_path}")
                         except Exception as e:
