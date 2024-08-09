@@ -10,6 +10,7 @@ RUN apt-get update && \
 
 ENV TZ=Asia/Tokyo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+ENV PYTHONDONTWRITEBYTECODE=1
 
 RUN echo "alias ls='ls --color=auto'" >> ~/.bashrc && \
     echo "alias ll='ls -alF'" >> ~/.bashrc && \
