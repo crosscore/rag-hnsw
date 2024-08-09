@@ -1,19 +1,19 @@
 # rag-hnsw/backend/src/drop_table.py
-import os
 import psycopg
 from psycopg import sql
 import logging
+from config import POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def get_db_connection():
     return psycopg.connect(
-        dbname=os.getenv('PGVECTOR_DB_NAME'),
-        user=os.getenv('PGVECTOR_DB_USER'),
-        password=os.getenv('PGVECTOR_DB_PASSWORD'),
-        host=os.getenv('PGVECTOR_DB_HOST'),
-        port=os.getenv('PGVECTOR_DB_PORT')
+        dbname=POSTGRES_DB,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        host=POSTGRES_HOST,
+        port=POSTGRES_PORT
     )
 
 def get_all_public_tables(cursor):

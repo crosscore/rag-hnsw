@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 def get_db_connection():
     db_params = {
-        'dbname': PGVECTOR_DB_NAME,
-        'user': PGVECTOR_DB_USER,
-        'password': PGVECTOR_DB_PASSWORD,
-        'host': PGVECTOR_DB_HOST,
-        'port': PGVECTOR_DB_PORT
+        'dbname': POSTGRES_DB,
+        'user': POSTGRES_USER,
+        'password': POSTGRES_PASSWORD,
+        'host': POSTGRES_HOST,
+        'port': POSTGRES_PORT
     }
     logger.info(f"Attempting to connect to database with params: {db_params}")
     return psycopg.connect(**db_params, options="-c timezone=Asia/Tokyo", row_factory=dict_row)
