@@ -5,7 +5,6 @@ from pypdf import PdfReader
 from openai import AzureOpenAI, OpenAI
 import logging
 from config import *
-from langchain_text_splitters import CharacterTextSplitter
 from datetime import datetime, timezone
 import hashlib
 import traceback
@@ -80,19 +79,6 @@ def calculate_sha256(file_path):
             hash_sha256.update(chunk)
     return hash_sha256.hexdigest()
 
-def split_text_into_chunks(text):
-    text_splitter = CharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        separator=SEPARATOR
-    )
-    chunks = text_splitter.split_text(text)
-    if not chunks:
-        logger.warning(f"Text splitting resulted in no chunks. Using full text as a single chunk.")
-        chunks = [text]
-    logger.debug(f"Split text into {len(chunks)} chunks")
-    return chunks
-
 def process_pdf(file_path, category, document_type):
     logger.info(f"Processing {document_type} PDF: {file_path}")
     pages = extract_text_from_pdf(file_path)
@@ -101,36 +87,31 @@ def process_pdf(file_path, category, document_type):
         return None
 
     processed_data = []
-    total_chunks = 0
     sha256_hash = calculate_sha256(file_path)
 
     for page in pages:
         page_text = page["page_content"]
         page_num = page["metadata"]["page"]
-        chunks = split_text_into_chunks(page_text)
 
-        for chunk in chunks:
-            if chunk.strip():  # Only process non-empty chunks
-                response = create_embedding(chunk)
-                if response is None:
-                    logger.warning(f"Failed to create embedding for chunk in page {page_num}")
-                    continue
-                current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
-                total_chunks += 1
-                processed_data.append({
-                    'file_name': os.path.basename(file_path),
-                    'file_path': file_path,
-                    'sha256_hash': sha256_hash,
-                    'business_category': category,
-                    'document_type': document_type,
-                    'document_page': str(page_num),
-                    'chunk_no': total_chunks,
-                    'chunk_text': chunk,
-                    'created_date_time': current_time,
-                    'embedding': response.data[0].embedding
-                })
+        if page_text.strip():  # Only process non-empty pages
+            response = create_embedding(page_text)
+            if response is None:
+                logger.warning(f"Failed to create embedding for page {page_num}")
+                continue
+            current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
+            processed_data.append({
+                'file_name': os.path.basename(file_path),
+                'file_path': file_path,
+                'sha256_hash': sha256_hash,
+                'business_category': category,
+                'document_type': document_type,
+                'document_page': str(page_num),
+                'page_text': page_text,
+                'created_date_time': current_time,
+                'embedding': response.data[0].embedding
+            })
 
-    logger.info(f"Processed {file_path}: {len(pages)} pages, {total_chunks} chunks")
+    logger.info(f"Processed {file_path}: {len(pages)} pages")
     return pd.DataFrame(processed_data)
 
 def process_pdf_files(input_dir, output_dir, document_type):
