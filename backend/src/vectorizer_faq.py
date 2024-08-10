@@ -1,4 +1,4 @@
-# rag-hnsw/backend/src/vectorizer.py
+# rag-hnsw/backend/src/vectorizer_faq.py
 import os
 import pandas as pd
 from pypdf import PdfReader
@@ -12,9 +12,9 @@ import traceback
 
 log_filedir = "/app/data/log/"
 os.makedirs(log_filedir, exist_ok=True)
-logging.basicConfig(filename=os.path.join(log_filedir, "vectorizer.log"), level=logging.DEBUG, format='%(asctime)s - %(message)s')
+logging.basicConfig(filename=os.path.join(log_filedir, "vectorizer_faq.log"), level=logging.DEBUG, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
-logger.info("Initializing vectorizer to read from manual and FAQ PDF folders")
+logger.info("Initializing vectorizer_faq to read from local PDF folder")
 
 if ENABLE_OPENAI:
     client = OpenAI(api_key=OPENAI_API_KEY)
@@ -27,19 +27,19 @@ else:
     )
     logger.info("Using Azure OpenAI API for embeddings")
 
-def get_pdf_files(directory):
+def get_pdf_files_from_local():
     pdf_files = []
-    logger.debug(f"Searching for PDF files in: {directory}")
+    logger.debug(f"Searching for PDF files in: {PDF_INPUT_DIR}")
 
-    for root, dirs, files in os.walk(directory):
+    for root, dirs, files in os.walk(PDF_INPUT_DIR):
         for file in files:
             if file.endswith('.pdf'):
                 file_path = os.path.join(root, file)
-                relative_path = os.path.relpath(root, directory)
+                relative_path = os.path.relpath(root, PDF_INPUT_DIR)
                 pdf_files.append((file_path, relative_path))
                 logger.debug(f"Found PDF: {file} in path: {relative_path}")
 
-    logger.info(f"Found {len(pdf_files)} PDF files in {directory}")
+    logger.info(f"Found {len(pdf_files)} PDF files in {PDF_INPUT_DIR}")
     return pdf_files
 
 def extract_text_from_pdf(file_path):
@@ -93,8 +93,8 @@ def split_text_into_chunks(text):
     logger.debug(f"Split text into {len(chunks)} chunks")
     return chunks
 
-def process_pdf(file_path, category, document_type):
-    logger.info(f"Processing {document_type} PDF: {file_path}")
+def process_pdf(file_path, category):
+    logger.info(f"Processing PDF: {file_path}")
     pages = extract_text_from_pdf(file_path)
     if not pages:
         logger.warning(f"No text extracted from PDF file: {file_path}")
@@ -107,44 +107,45 @@ def process_pdf(file_path, category, document_type):
     for page in pages:
         page_text = page["page_content"]
         page_num = page["metadata"]["page"]
-        chunks = split_text_into_chunks(page_text)
+        print(page_text)
+        break
+        # chunks = split_text_into_chunks(page_text)
 
-        for chunk in chunks:
-            if chunk.strip():  # Only process non-empty chunks
-                response = create_embedding(chunk)
-                if response is None:
-                    logger.warning(f"Failed to create embedding for chunk in page {page_num}")
-                    continue
-                current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
-                total_chunks += 1
-                processed_data.append({
-                    'file_name': os.path.basename(file_path),
-                    'file_path': file_path,
-                    'sha256_hash': sha256_hash,
-                    'business_category': category,
-                    'document_type': document_type,
-                    'document_page': str(page_num),
-                    'chunk_no': total_chunks,
-                    'chunk_text': chunk,
-                    'created_date_time': current_time,
-                    'embedding': response.data[0].embedding
-                })
+        # for chunk in chunks:
+        #     if chunk.strip():  # Only process non-empty chunks
+        #         response = create_embedding(chunk)
+        #         if response is None:
+        #             logger.warning(f"Failed to create embedding for chunk in page {page_num}")
+        #             continue
+        #         current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
+        #         total_chunks += 1
+        #         processed_data.append({
+        #             'file_name': os.path.basename(file_path),
+        #             'file_path': file_path,
+        #             'sha256_hash': sha256_hash,
+        #             'business_category': category,
+        #             'document_page': str(page_num),
+        #             'chunk_no': total_chunks,
+        #             'chunk_text': chunk,
+        #             'created_date_time': current_time,
+        #             'embedding': response.data[0].embedding
+        #         })
 
     logger.info(f"Processed {file_path}: {len(pages)} pages, {total_chunks} chunks")
     return pd.DataFrame(processed_data)
 
-def process_pdf_files(input_dir, output_dir, document_type):
-    pdf_files = get_pdf_files(input_dir)
-    logger.info(f"Starting to process {len(pdf_files)} {document_type} PDF files")
+def process_pdf_files():
+    pdf_files = get_pdf_files_from_local()
+    logger.info(f"Starting to process {len(pdf_files)} PDF files")
     for file_path, relative_path in pdf_files:
         try:
-            processed_data = process_pdf(file_path, relative_path, document_type)
+            processed_data = process_pdf(file_path, relative_path)
             if processed_data is not None and not processed_data.empty:
-                output_subdir = os.path.join(output_dir, relative_path)
-                os.makedirs(output_subdir, exist_ok=True)
+                output_dir = os.path.join(CSV_OUTPUT_DIR, relative_path)
+                os.makedirs(output_dir, exist_ok=True)
 
                 csv_file_name = f'{os.path.splitext(os.path.basename(file_path))[0]}.csv'
-                output_file = os.path.join(output_subdir, csv_file_name)
+                output_file = os.path.join(output_dir, csv_file_name)
 
                 processed_data.to_csv(output_file, index=False)
                 logger.info(f"CSV output completed for {csv_file_name} in path {output_file}")
@@ -156,14 +157,9 @@ def process_pdf_files(input_dir, output_dir, document_type):
 
 if __name__ == "__main__":
     try:
-        logger.info(f"PDF_MANUAL_DIR: {PDF_MANUAL_DIR}")
-        logger.info(f"PDF_FAQ_DIR: {PDF_FAQ_DIR}")
-        logger.info(f"CSV_MANUAL_DIR: {CSV_MANUAL_DIR}")
-        logger.info(f"CSV_FAQ_DIR: {CSV_FAQ_DIR}")
-
-        process_pdf_files(PDF_MANUAL_DIR, CSV_MANUAL_DIR, "manual")
-        process_pdf_files(PDF_FAQ_DIR, CSV_FAQ_DIR, "faq")
-
+        logger.info(f"PDF_INPUT_DIR: {PDF_INPUT_DIR}")
+        logger.info(f"CSV_OUTPUT_DIR: {CSV_OUTPUT_DIR}")
+        process_pdf_files()
         logger.info("PDF processing completed successfully")
     except Exception as e:
         logger.error(f"An error occurred during PDF processing: {str(e)}")
