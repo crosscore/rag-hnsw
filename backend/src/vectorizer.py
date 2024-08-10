@@ -8,6 +8,7 @@ from config import *
 from datetime import datetime, timezone
 import hashlib
 import traceback
+import re
 
 log_filedir = "/app/data/log/"
 os.makedirs(log_filedir, exist_ok=True)
@@ -79,6 +80,17 @@ def calculate_sha256(file_path):
             hash_sha256.update(chunk)
     return hash_sha256.hexdigest()
 
+def preprocess_faq_text(text):
+    # Extract FAQ ID
+    faq_id_match = re.search(r'#ID\n(\d+)', text)
+    faq_id = int(faq_id_match.group(1)) if faq_id_match else None
+
+    # Extract text from #質問・疑問 onwards
+    processed_text_match = re.search(r'#質問・疑問\n(.*)', text, re.DOTALL)
+    processed_text = processed_text_match.group(0) if processed_text_match else text
+
+    return faq_id, processed_text.strip()
+
 def process_pdf(file_path, category, document_type):
     logger.info(f"Processing {document_type} PDF: {file_path}")
     pages = extract_text_from_pdf(file_path)
@@ -94,22 +106,30 @@ def process_pdf(file_path, category, document_type):
         page_num = page["metadata"]["page"]
 
         if page_text.strip():  # Only process non-empty pages
-            response = create_embedding(page_text)
+            if document_type == "faq":
+                faq_id, processed_text = preprocess_faq_text(page_text)
+            else:
+                faq_id, processed_text = None, page_text
+
+            response = create_embedding(processed_text)
             if response is None:
                 logger.warning(f"Failed to create embedding for page {page_num}")
                 continue
             current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
-            processed_data.append({
+            data = {
                 'file_name': os.path.basename(file_path),
                 'file_path': file_path,
                 'sha256_hash': sha256_hash,
                 'business_category': category,
                 'document_type': document_type,
                 'document_page': str(page_num),
-                'page_text': page_text,
+                'page_text': processed_text,
                 'created_date_time': current_time,
                 'embedding': response.data[0].embedding
-            })
+            }
+            if faq_id is not None:
+                data['faq_id'] = faq_id
+            processed_data.append(data)
 
     logger.info(f"Processed {file_path}: {len(pages)} pages")
     return pd.DataFrame(processed_data)
