@@ -1,5 +1,6 @@
 # rag-hnsw/backend/config.py
 import os
+import json
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -27,15 +28,16 @@ DEAD_LETTER_QUEUE_URL = os.getenv("DEAD_LETTER_QUEUE_URL")
 LOCAL_UPLOAD_PATH = os.getenv("LOCAL_UPLOAD_PATH")
 LOCAL_DOWNLOAD_PATH = os.getenv("LOCAL_DOWNLOAD_PATH")
 
-# Input PDF directories
-PDF_INPUT_DIR = os.getenv("PDF_INPUT_DIR", '/app/data/pdf')
-PDF_MANUAL_DIR = os.path.join(PDF_INPUT_DIR, os.getenv("PDF_MANUAL_DIR", "manual"))
-PDF_FAQ_DIR = os.path.join(PDF_INPUT_DIR, os.getenv("PDF_FAQ_DIR", "faq"))
+# Base directories
+DATA_DIR = os.getenv("DATA_DIR", "/app/data")
+PDF_INPUT_DIR = os.path.join(DATA_DIR, "pdf")
+CSV_OUTPUT_DIR = os.path.join(DATA_DIR, "csv")
 
-# Output CSV directories
-CSV_OUTPUT_DIR = os.getenv("CSV_OUTPUT_DIR", '/app/data/csv')
-CSV_MANUAL_DIR = os.path.join(CSV_OUTPUT_DIR, os.getenv("CSV_MANUAL_DIR", "manual"))
-CSV_FAQ_DIR = os.path.join(CSV_OUTPUT_DIR, os.getenv("CSV_FAQ_DIR", "faq"))
+# Derived directories
+PDF_MANUAL_DIR = os.path.join(PDF_INPUT_DIR, "manual")
+PDF_FAQ_DIR = os.path.join(PDF_INPUT_DIR, "faq")
+CSV_MANUAL_DIR = os.path.join(CSV_OUTPUT_DIR, "manual")
+CSV_FAQ_DIR = os.path.join(CSV_OUTPUT_DIR, "faq")
 
 # POSTGRES
 POSTGRES_DB = os.getenv("POSTGRES_DB", "aurora")
@@ -46,9 +48,10 @@ POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", 5432))
 
 # Index settings
 INDEX_TYPE = os.getenv("INDEX_TYPE", "hnsw").lower()
-HNSW_M = int(os.getenv("HNSW_M", "16"))
-HNSW_EF_CONSTRUCTION = int(os.getenv("HNSW_EF_CONSTRUCTION", "256"))
-HNSW_EF_SEARCH = int(os.getenv("HNSW_EF_SEARCH", "500"))
+HNSW_SETTINGS = json.loads(os.getenv("HNSW_SETTINGS", '{"m": 16, "ef_construction": 256, "ef_search": 500}'))
+HNSW_M = HNSW_SETTINGS.get("m", 16)
+HNSW_EF_CONSTRUCTION = HNSW_SETTINGS.get("ef_construction", 256)
+HNSW_EF_SEARCH = HNSW_SETTINGS.get("ef_search", 500)
 
 # PostgreSQL table settings
 MANUAL_TABLE_NAME = os.getenv("MANUAL_TABLE_NAME", "manual_embeddings")

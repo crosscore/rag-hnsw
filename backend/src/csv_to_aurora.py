@@ -7,9 +7,10 @@ from config import *
 import logging
 from contextlib import contextmanager
 
-log_dir = "/app/data/log"
+log_dir = os.path.join(DATA_DIR, "log")
 os.makedirs(log_dir, exist_ok=True)
-logging.basicConfig(filename="/app/data/log/csv_to_aurora.log", level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename=os.path.join(log_dir, "csv_to_aurora.log"), level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 @contextmanager
@@ -25,7 +26,7 @@ def get_db_connection():
         )
         logger.info(f"Connected to database: {POSTGRES_HOST}:{POSTGRES_PORT}")
         yield conn
-    except (KeyError, psycopg.Error) as e:
+    except Exception as e:
         logger.error(f"Database connection error: {e}")
         raise
     finally:
@@ -56,13 +57,10 @@ def create_table_and_index(cursor, table_name):
         cursor.execute(create_table_query)
         logger.info(f"Table {table_name} creation query executed")
 
-        # 確認クエリ
         cursor.execute(sql.SQL("SELECT to_regclass({})").format(sql.Literal(table_name)))
-        result = cursor.fetchone()
-        if result[0]:
+        if cursor.fetchone()[0]:
             logger.info(f"Confirmed: Table {table_name} exists")
         else:
-            logger.error(f"Table {table_name} was not created successfully")
             raise Exception(f"Failed to create table {table_name}")
 
         if INDEX_TYPE == "hnsw":
@@ -93,18 +91,15 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         logger.error(f"Error reading CSV file {file_path}: {e}")
         return
 
-    if table_name == FAQ_TABLE_NAME:
-        insert_query = sql.SQL("""
-        INSERT INTO {}
-        (file_name, file_path, sha256_hash, business_category, document_type, document_page, page_text, created_date_time, embedding, faq_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072), %s);
-        """).format(sql.Identifier(table_name))
-    else:
-        insert_query = sql.SQL("""
-        INSERT INTO {}
-        (file_name, file_path, sha256_hash, business_category, document_type, document_page, page_text, created_date_time, embedding)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072));
-        """).format(sql.Identifier(table_name))
+    insert_query = sql.SQL("""
+    INSERT INTO {}
+    (file_name, file_path, sha256_hash, business_category, document_type, document_page, page_text, created_date_time, embedding{})
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072){});
+    """).format(
+        sql.Identifier(table_name),
+        sql.SQL(", faq_id" if table_name == FAQ_TABLE_NAME else ""),
+        sql.SQL(", %s" if table_name == FAQ_TABLE_NAME else "")
+    )
 
     data = []
     for _, row in df.iterrows():
@@ -116,7 +111,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
             continue
 
         business_category = os.path.basename(os.path.dirname(file_path))
-        row_data = (
+        row_data = [
             row['file_name'],
             row['file_path'],
             row['sha256_hash'],
@@ -126,12 +121,12 @@ def process_csv_file(file_path, cursor, table_name, document_type):
             row['page_text'],
             row['created_date_time'],
             embedding
-        )
+        ]
 
         if table_name == FAQ_TABLE_NAME:
-            row_data += (row['faq_id'],)
+            row_data.append(row['faq_id'])
 
-        data.append(row_data)
+        data.append(tuple(row_data))
 
     try:
         cursor.executemany(insert_query, data)
@@ -141,9 +136,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         raise
 
 def process_directory(cursor, directory, table_name, document_type):
-    csv_files = []
-    for root, dirs, files in os.walk(directory):
-        csv_files.extend([os.path.join(root, file) for file in files if file.endswith('.csv')])
+    csv_files = [os.path.join(root, file) for root, _, files in os.walk(directory) for file in files if file.endswith('.csv')]
     logger.info(f"Found {len(csv_files)} CSV files in {directory} and its subdirectories")
     if not csv_files:
         logger.warning(f"No CSV files found in {directory}")
@@ -160,18 +153,15 @@ def process_csv_files():
             with conn.cursor() as cursor:
                 conn.autocommit = False
                 try:
-                    # テーブル作成を確実に行う
                     create_table_and_index(cursor, MANUAL_TABLE_NAME)
                     create_table_and_index(cursor, FAQ_TABLE_NAME)
                     conn.commit()
                     logger.info("Tables created successfully")
 
-                    # Process manual CSVs
-                    logger.info(f"Attempting to process manual CSVs from: {CSV_MANUAL_DIR}")
+                    logger.info(f"Processing manual CSVs from: {CSV_MANUAL_DIR}")
                     process_directory(cursor, CSV_MANUAL_DIR, MANUAL_TABLE_NAME, "manual")
 
-                    # Process FAQ CSVs
-                    logger.info(f"Attempting to process FAQ CSVs from: {CSV_FAQ_DIR}")
+                    logger.info(f"Processing FAQ CSVs from: {CSV_FAQ_DIR}")
                     process_directory(cursor, CSV_FAQ_DIR, FAQ_TABLE_NAME, "faq")
 
                     conn.commit()
@@ -181,7 +171,6 @@ def process_csv_files():
                     logger.error(f"Transaction rolled back due to error: {e}")
                     raise
 
-                # Log record counts
                 for table_name in [MANUAL_TABLE_NAME, FAQ_TABLE_NAME]:
                     cursor.execute(sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(table_name)))
                     count = cursor.fetchone()[0]
