@@ -1,4 +1,4 @@
-# rag-hnsw/backend/src/reading_pgvector.py
+# rag-hnsw/backend/src/reading_aurora.py
 import os
 import logging
 import psycopg
