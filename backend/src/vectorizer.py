@@ -10,9 +10,10 @@ import hashlib
 import traceback
 import re
 
-log_filedir = "/app/data/log/"
-os.makedirs(log_filedir, exist_ok=True)
-logging.basicConfig(filename=os.path.join(log_filedir, "vectorizer.log"), level=logging.DEBUG, format='%(asctime)s - %(message)s')
+log_dir = os.path.join(DATA_DIR, "log")
+os.makedirs(log_dir, exist_ok=True)
+logging.basicConfig(filename=os.path.join(log_dir, "vectorizer.log"), level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 logger.info("Initializing vectorizer to read from manual and FAQ PDF folders")
 
@@ -31,9 +32,9 @@ def get_pdf_files(directory):
     pdf_files = []
     logger.debug(f"Searching for PDF files in: {directory}")
 
-    for root, dirs, files in os.walk(directory):
+    for root, _, files in os.walk(directory):
         for file in files:
-            if file.endswith('.pdf'):
+            if file.lower().endswith('.pdf'):
                 file_path = os.path.join(root, file)
                 relative_path = os.path.relpath(root, directory)
                 pdf_files.append((file_path, relative_path))
@@ -81,11 +82,9 @@ def calculate_sha256(file_path):
     return hash_sha256.hexdigest()
 
 def preprocess_faq_text(text):
-    # Extract FAQ ID
     faq_id_match = re.search(r'#ID\n(\d+)', text)
     faq_id = int(faq_id_match.group(1)) if faq_id_match else None
 
-    # Extract text from #質問・疑問 onwards
     processed_text_match = re.search(r'#質問・疑問\n(.*)', text, re.DOTALL)
     processed_text = processed_text_match.group(0) if processed_text_match else text
 
@@ -115,6 +114,7 @@ def process_pdf(file_path, category, document_type):
             if response is None:
                 logger.warning(f"Failed to create embedding for page {page_num}")
                 continue
+
             current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
             data = {
                 'file_name': os.path.basename(file_path),
