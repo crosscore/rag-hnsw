@@ -47,7 +47,7 @@ services:
             - .env
         environment:
             - POSTGRES_DB=${POSTGRES_DB}
-            - POSTGRES_USER=${POSTGRESS_USER}
+            - POSTGRES_USER=${POSTGRES_USER}
             - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
             - PGTZ=Asia/Tokyo
         volumes:
