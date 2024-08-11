@@ -1,4 +1,4 @@
-# rag-hnsw/pgvector_db/Dockerfile
+# rag-hnsw/aurora/Dockerfile
 
 FROM postgres:latest
 

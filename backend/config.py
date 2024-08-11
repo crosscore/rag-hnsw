@@ -27,11 +27,6 @@ DEAD_LETTER_QUEUE_URL = os.getenv("DEAD_LETTER_QUEUE_URL")
 LOCAL_UPLOAD_PATH = os.getenv("LOCAL_UPLOAD_PATH")
 LOCAL_DOWNLOAD_PATH = os.getenv("LOCAL_DOWNLOAD_PATH")
 
-# PDF processing settings
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 1000))
-CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 0))
-SEPARATOR = os.getenv("SEPARATOR", "\n\n")
-
 # Input PDF directories
 PDF_INPUT_DIR = os.getenv("PDF_INPUT_DIR", '/app/data/pdf')
 PDF_MANUAL_DIR = os.getenv("PDF_MANUAL_DIR", os.path.join(PDF_INPUT_DIR, "manual"))
@@ -46,7 +41,7 @@ CSV_FAQ_DIR = os.getenv("CSV_FAQ_DIR", os.path.join(CSV_OUTPUT_DIR, "faq"))
 POSTGRES_DB = os.getenv("POSTGRES_DB", "aurora")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "user")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "pass")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "api1_aurora")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "aurora")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", 5432))
 
 # Index settings
@@ -61,5 +56,4 @@ FAQ_TABLE_NAME = os.getenv("FAQ_TABLE_NAME", "faq_embeddings")
 
 # Other settings
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
-POSTGRES_CONTAINER_NAME = os.getenv("POSTGRES_CONTAINER_NAME", "api1_aurora")
-PIPELINE_EXECUTION_MODE = os.getenv("PIPELINE_EXECUTION_MODE", "csv_to_pgvector")
+PIPELINE_EXECUTION_MODE = os.getenv("PIPELINE_EXECUTION_MODE", "csv_to_aurora")
