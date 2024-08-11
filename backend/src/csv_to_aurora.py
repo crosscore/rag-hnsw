@@ -9,7 +9,7 @@ from contextlib import contextmanager
 
 log_dir = "/app/data/log"
 os.makedirs(log_dir, exist_ok=True)
-logging.basicConfig(filename="/app/data/log/csv_to_aurora.log", level=logging.INFO, format='%(asctime)s - %(message)s')
+logging.basicConfig(filename="/app/data/log/csv_to_aurora.log", level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 @contextmanager
@@ -54,7 +54,16 @@ def create_table_and_index(cursor, table_name):
 
     try:
         cursor.execute(create_table_query)
-        logger.info(f"Table {table_name} created successfully")
+        logger.info(f"Table {table_name} creation query executed")
+
+        # 確認クエリ
+        cursor.execute(sql.SQL("SELECT to_regclass({})").format(sql.Literal(table_name)))
+        result = cursor.fetchone()
+        if result[0]:
+            logger.info(f"Confirmed: Table {table_name} exists")
+        else:
+            logger.error(f"Table {table_name} was not created successfully")
+            raise Exception(f"Failed to create table {table_name}")
 
         if INDEX_TYPE == "hnsw":
             create_index_query = sql.SQL("""
@@ -68,7 +77,7 @@ def create_table_and_index(cursor, table_name):
                 sql.Literal(HNSW_EF_CONSTRUCTION)
             )
             cursor.execute(create_index_query)
-            logger.info(f"HNSW index created successfully for {table_name} with parameters: m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION}")
+            logger.info(f"HNSW index creation query executed for {table_name}")
         else:
             logger.info(f"No index created for {table_name} as per configuration")
     except psycopg.Error as e:
@@ -77,7 +86,12 @@ def create_table_and_index(cursor, table_name):
 
 def process_csv_file(file_path, cursor, table_name, document_type):
     logger.info(f"Processing CSV file: {file_path}")
-    df = pd.read_csv(file_path)
+    try:
+        df = pd.read_csv(file_path)
+        logger.debug(f"Successfully read CSV file: {file_path}")
+    except Exception as e:
+        logger.error(f"Error reading CSV file {file_path}: {e}")
+        return
 
     if table_name == FAQ_TABLE_NAME:
         insert_query = sql.SQL("""
@@ -98,14 +112,15 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         if isinstance(embedding, str):
             embedding = eval(embedding)
         if len(embedding) != 3072:
-            logger.warning(f"Incorrect vector dimension for row. Expected 3072, got {len(embedding)}. Skipping.")
+            logger.warning(f"Incorrect vector dimension for row in {file_path}. Expected 3072, got {len(embedding)}. Skipping.")
             continue
 
+        business_category = os.path.basename(os.path.dirname(file_path))
         row_data = (
             row['file_name'],
             row['file_path'],
             row['sha256_hash'],
-            row['business_category'],
+            business_category,
             document_type,
             row['document_page'],
             row['page_text'],
@@ -120,29 +135,51 @@ def process_csv_file(file_path, cursor, table_name, document_type):
 
     try:
         cursor.executemany(insert_query, data)
-        logger.info(f"Inserted {len(data)} rows into the {table_name} table")
+        logger.info(f"Inserted {len(data)} rows into the {table_name} table from {file_path}")
     except Exception as e:
-        logger.error(f"Error inserting batch into {table_name}: {e}")
+        logger.error(f"Error inserting batch into {table_name} from {file_path}: {e}")
         raise
+
+def process_directory(cursor, directory, table_name, document_type):
+    csv_files = []
+    for root, dirs, files in os.walk(directory):
+        csv_files.extend([os.path.join(root, file) for file in files if file.endswith('.csv')])
+    logger.info(f"Found {len(csv_files)} CSV files in {directory} and its subdirectories")
+    if not csv_files:
+        logger.warning(f"No CSV files found in {directory}")
+    for csv_file_path in csv_files:
+        try:
+            process_csv_file(csv_file_path, cursor, table_name, document_type)
+            logger.info(f"Successfully processed {csv_file_path}")
+        except Exception as e:
+            logger.error(f"Error processing {csv_file_path}: {e}")
 
 def process_csv_files():
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
-                # Process manual CSVs
-                if os.path.exists(CSV_MANUAL_DIR):
-                    logger.info(f"CSV_MANUAL_DIR exists: {CSV_MANUAL_DIR}")
+                conn.autocommit = False
+                try:
+                    # テーブル作成を確実に行う
                     create_table_and_index(cursor, MANUAL_TABLE_NAME)
+                    create_table_and_index(cursor, FAQ_TABLE_NAME)
+                    conn.commit()
+                    logger.info("Tables created successfully")
+
+                    # Process manual CSVs
+                    logger.info(f"Attempting to process manual CSVs from: {CSV_MANUAL_DIR}")
                     process_directory(cursor, CSV_MANUAL_DIR, MANUAL_TABLE_NAME, "manual")
 
-                # Process FAQ CSVs
-                if os.path.exists(CSV_FAQ_DIR):
-                    logger.info(f"CSV_FAQ_DIR exists: {CSV_FAQ_DIR}")
-                    create_table_and_index(cursor, FAQ_TABLE_NAME)
+                    # Process FAQ CSVs
+                    logger.info(f"Attempting to process FAQ CSVs from: {CSV_FAQ_DIR}")
                     process_directory(cursor, CSV_FAQ_DIR, FAQ_TABLE_NAME, "faq")
 
-                conn.commit()
-                logger.info("All CSV files have been processed and inserted into the database.")
+                    conn.commit()
+                    logger.info("All CSV files have been processed and inserted into the database.")
+                except Exception as e:
+                    conn.rollback()
+                    logger.error(f"Transaction rolled back due to error: {e}")
+                    raise
 
                 # Log record counts
                 for table_name in [MANUAL_TABLE_NAME, FAQ_TABLE_NAME]:
@@ -151,24 +188,12 @@ def process_csv_files():
                     logger.info(f"Total records in {table_name}: {count}")
 
     except Exception as e:
-        logger.error(f"An error occurred during processing: {e}")
+        logger.error(f"An error occurred during processing: {e}", exc_info=True)
         raise
-
-def process_directory(cursor, directory, table_name, document_type):
-    csv_files = []
-    for root, dirs, files in os.walk(directory):
-        csv_files.extend([os.path.join(root, file) for file in files if file.endswith('.csv')])
-    logger.info(f"Found {len(csv_files)} CSV files in {directory} and its subdirectories")
-    for csv_file_path in csv_files:
-        try:
-            process_csv_file(csv_file_path, cursor, table_name, document_type)
-            logger.info(f"Successfully processed {csv_file_path}")
-        except Exception as e:
-            logger.error(f"Error processing {csv_file_path}: {e}")
 
 if __name__ == "__main__":
     try:
         process_csv_files()
     except Exception as e:
-        logger.error(f"Script execution failed: {e}")
+        logger.error(f"Script execution failed: {e}", exc_info=True)
         exit(1)

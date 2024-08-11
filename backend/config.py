@@ -29,13 +29,13 @@ LOCAL_DOWNLOAD_PATH = os.getenv("LOCAL_DOWNLOAD_PATH")
 
 # Input PDF directories
 PDF_INPUT_DIR = os.getenv("PDF_INPUT_DIR", '/app/data/pdf')
-PDF_MANUAL_DIR = os.getenv("PDF_MANUAL_DIR", os.path.join(PDF_INPUT_DIR, "manual"))
-PDF_FAQ_DIR = os.getenv("PDF_FAQ_DIR", os.path.join(PDF_INPUT_DIR, "faq"))
+PDF_MANUAL_DIR = os.path.join(PDF_INPUT_DIR, os.getenv("PDF_MANUAL_DIR", "manual"))
+PDF_FAQ_DIR = os.path.join(PDF_INPUT_DIR, os.getenv("PDF_FAQ_DIR", "faq"))
 
 # Output CSV directories
 CSV_OUTPUT_DIR = os.getenv("CSV_OUTPUT_DIR", '/app/data/csv')
-CSV_MANUAL_DIR = os.getenv("CSV_MANUAL_DIR", os.path.join(CSV_OUTPUT_DIR, "manual"))
-CSV_FAQ_DIR = os.getenv("CSV_FAQ_DIR", os.path.join(CSV_OUTPUT_DIR, "faq"))
+CSV_MANUAL_DIR = os.path.join(CSV_OUTPUT_DIR, os.getenv("CSV_MANUAL_DIR", "manual"))
+CSV_FAQ_DIR = os.path.join(CSV_OUTPUT_DIR, os.getenv("CSV_FAQ_DIR", "faq"))
 
 # POSTGRES
 POSTGRES_DB = os.getenv("POSTGRES_DB", "aurora")
