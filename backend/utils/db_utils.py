@@ -13,11 +13,11 @@ def get_db_connection():
     cursor = None
     try:
         conn = psycopg.connect(
-            dbname=PGVECTOR_DB_NAME,
-            user=PGVECTOR_DB_USER,
-            password=PGVECTOR_DB_PASSWORD,
-            host=PGVECTOR_DB_HOST,
-            port=PGVECTOR_DB_PORT
+            dbname=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT
         )
         conn.autocommit = True
         cursor = conn.cursor()
@@ -42,7 +42,7 @@ def get_available_categories():
                 SELECT DISTINCT business_category
                 FROM {}
                 ORDER BY business_category
-            """).format(sql.Identifier(EMBEDDINGS_TABLE_NAME)))
+            """).format(sql.Identifier(MANUAL_TABLE_NAME)))
             categories = [row[0] for row in cursor.fetchall()]
         return categories
     except psycopg.Error as e:
@@ -62,7 +62,7 @@ def get_search_query(index_type):
     """).format(
         vector_type=sql.SQL(vector_type),
         operator=sql.SQL(operator),
-        table=sql.Identifier(EMBEDDINGS_TABLE_NAME)
+        table=sql.Identifier(MANUAL_TABLE_NAME)
     )
     return query
 
