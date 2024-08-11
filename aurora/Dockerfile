@@ -28,3 +28,7 @@ RUN echo "alias ls='ls --color=auto'" >> ~/.bashrc && \
     echo "export PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '" >> ~/.bashrc
 
 RUN echo "CREATE EXTENSION IF NOT EXISTS vector;" > /docker-entrypoint-initdb.d/10-create-extension.sql
+
+# データベース初期化スクリプトを追加
+COPY init-db.sh /docker-entrypoint-initdb.d/
+RUN chmod +x /docker-entrypoint-initdb.d/init-db.sh
