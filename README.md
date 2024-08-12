@@ -41,3 +41,26 @@ volumes:
 
 \d+
 
+# .env
+
+# Base directories
+DATA_DIR='/app/data'
+
+# POSTGRES (オーバーライドが必要な場合のみ設定)
+POSTGRES_DB=aurora
+POSTGRES_USER=user
+POSTGRES_PASSWORD=pass
+POSTGRES_HOST=aurora
+POSTGRES_PORT=5432
+
+# Index settings
+INDEX_TYPE="hnsw"
+HNSW_SETTINGS='{"m": 16, "ef_construction": 256, "ef_search": 500}'
+
+# PostgreSQL table settings
+MANUAL_TABLE_NAME="manual_embeddings"
+FAQ_TABLE_NAME="faq_embeddings"
+
+# Other settings
+BATCH_SIZE=1000
+PIPELINE_EXECUTION_MODE="csv_to_aurora"
