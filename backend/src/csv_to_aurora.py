@@ -41,7 +41,7 @@ def create_table_and_index(cursor, table_name):
         file_name TEXT,
         file_path TEXT,
         sha256_hash TEXT,
-        business_category TEXT,
+        business_category SMALLINT,
         document_type TEXT,
         document_page SMALLINT,
         page_text TEXT,
