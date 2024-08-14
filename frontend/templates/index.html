@@ -1,31 +1,39 @@
 <!-- rag-hnsw/frontend/templates/index.html -->
 <!DOCTYPE html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Similar Chunk Search</title>
-		<link rel="stylesheet" href="/static/styles.css" />
-	</head>
-	<body>
-		<div class="container">
-			<h1>Similar Chunk Search</h1>
-			<div class="search-container">
-				<select id="category-select">
-					{% for category in categories %}
-					<option value="{{ category }}">{{ category }}</option>
-					{% endfor %}
-				</select>
-				<input
-					type="text"
-					id="search-input"
-					placeholder="Enter your search query"
-				/>
-				<button id="search-button">Search</button>
-			</div>
-			<div id="search-results"></div>
-			<div id="ai-response"></div>
-		</div>
-		<script src="/static/script.js"></script>
-	</body>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Similar Chunk Search</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Similar Chunk Search</h1>
+
+        <div class="search-container">
+            <select id="category-select">
+                <option value="">カテゴリを選択してください</option>
+                {% for category in categories %}
+                    <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="search-input" placeholder="検索キーワードを入力">
+            <button id="search-button">検索</button>
+        </div>
+
+        <div id="results-container">
+            <div id="search-results">
+                <div id="manual-results"></div>
+                <div id="faq-results"></div>
+            </div>
+            <div id="ai-response">
+                <h2>AI Response</h2>
+                <p></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
 </html>

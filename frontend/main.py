@@ -8,6 +8,7 @@ import websockets
 import asyncio
 import logging
 import httpx
+import json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -95,7 +96,18 @@ async def forward_to_client(client_ws: WebSocket, backend_ws: websockets.WebSock
     try:
         while True:
             response = await backend_ws.recv()
-            await client_ws.send_text(response)
+            response_data = json.loads(response)
+            
+            if "manual_results" in response_data:
+                await client_ws.send_json({"manual_results": response_data["manual_results"]})
+            elif "faq_results" in response_data:
+                await client_ws.send_json({"faq_results": response_data["faq_results"]})
+            elif "ai_response_chunk" in response_data:
+                await client_ws.send_json({"ai_response_chunk": response_data["ai_response_chunk"]})
+            elif "ai_response_end" in response_data:
+                await client_ws.send_json({"ai_response_end": True})
+            else:
+                await client_ws.send_text(response)
     except WebSocketDisconnect:
         await client_ws.close()
 

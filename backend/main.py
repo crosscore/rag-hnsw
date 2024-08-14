@@ -72,41 +72,77 @@ async def websocket_endpoint(websocket: WebSocket):
                     ).data[0].embedding
 
                 with get_db_connection() as (conn, cursor):
-                    cursor.execute(get_search_query(INDEX_TYPE), (question_vector, category, top_n))
-                    results = cursor.fetchall()
+                    manual_query = get_search_query(INDEX_TYPE, MANUAL_TABLE_NAME)
+                    faq_query = get_search_query(INDEX_TYPE, FAQ_TABLE_NAME)
+                    
+                    cursor.execute(manual_query, (question_vector, category, top_n))
+                    manual_results = cursor.fetchall()
+                    
+                    cursor.execute(faq_query, (question_vector, category, top_n))
+                    faq_results = cursor.fetchall()
+                    
                     conn.commit()
 
-                formatted_results = []
-                chunk_texts = []
-                for file_name, document_page, chunk_no, chunk_text, distance in results:
-                    result = {
+                formatted_manual_results = []
+                formatted_faq_results = []
+                manual_texts = []
+                faq_texts = []
+
+                for result in manual_results:
+                    file_name, document_page, chunk_no, page_text, distance = result
+                    formatted_result = {
                         "file_name": str(file_name),
                         "page": int(document_page),
                         "chunk_no": int(chunk_no),
-                        "chunk_text": str(chunk_text),
+                        "page_text": str(page_text),
                         "distance": float(distance),
                         "category": category,
+                        "document_type": "manual",
                         "link_text": f"/{category}/{os.path.basename(file_name)}, p.{document_page}",
                         "link": f"pdf/{category}/{os.path.basename(file_name)}?page={document_page}",
                     }
-                    formatted_results.append(result)
-                    chunk_texts.append(chunk_text)
+                    formatted_manual_results.append(formatted_result)
+                    manual_texts.append(page_text)
 
-                await websocket.send_json({"results": formatted_results, "chunk_texts": chunk_texts})
+                for result in faq_results:
+                    file_name, document_page, chunk_no, page_text, distance = result
+                    formatted_result = {
+                        "file_name": str(file_name),
+                        "page": int(document_page),
+                        "chunk_no": int(chunk_no),
+                        "page_text": str(page_text),
+                        "distance": float(distance),
+                        "category": category,
+                        "document_type": "faq",
+                        "link_text": f"/{category}/{os.path.basename(file_name)}, p.{document_page}",
+                        "link": f"pdf/{category}/{os.path.basename(file_name)}?page={document_page}",
+                    }
+                    formatted_faq_results.append(formatted_result)
+                    faq_texts.append(page_text)
+
+                # Sort results by distance
+                formatted_manual_results.sort(key=lambda x: x['distance'])
+                formatted_faq_results.sort(key=lambda x: x['distance'])
+
+                # Send manual and FAQ results separately
+                await websocket.send_json({"manual_results": formatted_manual_results[:top_n]})
+                await websocket.send_json({"faq_results": formatted_faq_results[:top_n]})
                 logger.info(f"Sent search results for question: {question[:50]}... in category: {category}")
 
                 # Generate AI response
-                if chunk_texts:
+                if manual_texts or faq_texts:
                     formatted_prompt = f"""
                     ユーザーの質問に対して、参考文書を元に回答して下さい。
 
                     ユーザーの質問：
                     {question}
 
-                    参考文書：
+                    参考文書(マニュアル)：
+                    {' '.join(manual_texts[:3])}
+
+                    参考文書(Q&A):
+                    {' '.join(faq_texts[:3])}
                     """
-                    for i, chunk in enumerate(chunk_texts, 1):
-                        formatted_prompt += f"{i}. {chunk}\n"
 
                 if ENABLE_OPENAI:
                     response = client.chat.completions.create(
