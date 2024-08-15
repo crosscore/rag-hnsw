@@ -3,10 +3,11 @@ from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI, AzureOpenAI
 from starlette.websockets import WebSocketDisconnect
+import urllib.parse
 import logging
 import os
 from utils.pdf_utils import get_pdf
-from utils.db_utils import get_db_connection, get_search_query, get_available_categories, execute_search_query
+from utils.db_utils import get_db_connection, get_search_query, get_available_categories
 from config import *
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -42,7 +43,15 @@ async def get_categories():
 
 @app.get("/pdf/{category}/{path:path}")
 async def serve_pdf(category: str, path: str, page: int = None):
-    return get_pdf(category, path, page)
+    try:
+        decoded_path = urllib.parse.unquote(path)
+        return get_pdf(category, decoded_path, page)
+    except HTTPException as e:
+        logger.error(f"Error serving PDF: {str(e)}")
+        return JSONResponse(status_code=e.status_code, content={"detail": str(e.detail)})
+    except Exception as e:
+        logger.error(f"Unexpected error serving PDF: {str(e)}")
+        return JSONResponse(status_code=500, content={"detail": f"Unexpected error serving PDF: {str(e)}"})
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -72,8 +81,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     ).data[0].embedding
 
                 with get_db_connection() as (conn, cursor):
-                    manual_results = execute_search_query(conn, cursor, question_vector, category, top_n, MANUAL_TABLE_NAME)
-                    faq_results = execute_search_query(conn, cursor, question_vector, category, top_n, FAQ_TABLE_NAME)
+                    manual_query = get_search_query(INDEX_TYPE, MANUAL_TABLE_NAME)
+                    faq_query = get_search_query(INDEX_TYPE, FAQ_TABLE_NAME)
+                    
+                    cursor.execute(manual_query, (question_vector, category, top_n))
+                    manual_results = cursor.fetchall()
+                    
+                    cursor.execute(faq_query, (question_vector, category, top_n))
+                    faq_results = cursor.fetchall()
                     
                     conn.commit()
 
@@ -130,52 +145,39 @@ async def websocket_endpoint(websocket: WebSocket):
                     {question}
 
                     参考文書(マニュアル)：
-                    {' '.join(manual_texts)}
+                    {' '.join(manual_texts[:3])}
 
                     参考文書(Q&A):
-                    {' '.join(faq_texts)}
+                    {' '.join(faq_texts[:3])}
                     """
 
-                    if ENABLE_OPENAI:
-                        response = client.chat.completions.create(
-                            model="gpt-4o-mini",
-                            temperature=1.00,
-                            max_tokens=100,
-                            messages=[
-                                {"role": "system", "content": "You are a helpful assistant."},
-                                {"role": "user", "content": formatted_prompt}
-                            ],
-                            stream=True
-                        )
-                    else:
-                        response = client.chat.completions.create(
-                            model=AZURE_OPENAI_DEPLOYMENT,
-                            messages=[
-                                {"role": "system", "content": "You are a helpful assistant."},
-                                {"role": "user", "content": formatted_prompt}
-                            ],
-                            stream=True
-                        )
-
-                    try:
-                        for chunk in response:
-                            if chunk.choices and len(chunk.choices) > 0:
-                                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                                    content = chunk.choices[0].delta.content
-                                    if content:
-                                        await websocket.send_json({"ai_response_chunk": content})
-                            else:
-                                logger.warning("Received an empty chunk from OpenAI API")
-                    except Exception as e:
-                        logger.error(f"Error processing AI response: {str(e)}")
-                        await websocket.send_json({"error": "Error generating AI response"})
-                    finally:
-                        await websocket.send_json({"ai_response_end": True})
-                        logger.info(f"Sent streaming AI response for question: {question[:50]}...")
+                if ENABLE_OPENAI:
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        temperature=1.00,
+                        max_tokens=100,
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant."},
+                            {"role": "user", "content": formatted_prompt}
+                        ],
+                        stream=True
+                    )
                 else:
-                    await websocket.send_json({"ai_response_chunk": "申し訳ありませんが、該当する情報が見つかりませんでした。"})
-                    await websocket.send_json({"ai_response_end": True})
-                    logger.info("No relevant information found for the query")
+                    response = client.chat.completions.create(
+                        model=AZURE_OPENAI_DEPLOYMENT,
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant."},
+                            {"role": "user", "content": formatted_prompt}
+                        ],
+                        stream=True
+                    )
+
+                for chunk in response:
+                    if chunk.choices[0].delta.content:
+                        await websocket.send_json({"ai_response_chunk": chunk.choices[0].delta.content})
+
+                await websocket.send_json({"ai_response_end": True})
+                logger.info(f"Sent streaming AI response for question: {question[:50]}...")
 
             except Exception as e:
                 logger.error(f"Error processing query: {str(e)}")
@@ -192,4 +194,3 @@ if __name__ == "__main__":
     import uvicorn
     logger.info("Starting the application")
     uvicorn.run(app, host="0.0.0.0", port=8001, log_level="info")
-    
