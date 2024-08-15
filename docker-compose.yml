@@ -46,7 +46,6 @@ services:
         container_name: batch
         build: 
             context: ./backend
-            dockerfile: Dockerfile.batch
         env_file:
             - .env
         environment:
