@@ -60,6 +60,7 @@ HNSW_SETTINGS='{"m": 16, "ef_construction": 256, "ef_search": 500}'
 # PostgreSQL table settings
 MANUAL_TABLE_NAME="manual_embeddings"
 FAQ_TABLE_NAME="faq_embeddings"
+TOC_TABLE_NAME="toc_table"
 
 # Other settings
 BATCH_SIZE=1000
