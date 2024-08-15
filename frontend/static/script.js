@@ -21,11 +21,13 @@ document.addEventListener("DOMContentLoaded", () => {
             } else if (data.faq_results) {
                 displayResults(data.faq_results, "FAQ Search Results");
             } else if (data.ai_response_chunk) {
-                const responseP = aiResponse.querySelector("p");
+                const responseP = aiResponse.querySelector("p") || aiResponse.appendChild(document.createElement("p"));
                 responseP.innerHTML += data.ai_response_chunk;
             } else if (data.ai_response_end) {
                 const responseP = aiResponse.querySelector("p");
-                responseP.innerHTML += "<br><em>(Response complete)</em>";
+                if (responseP) {
+                    responseP.innerHTML += "<br><em>(Response complete)</em>";
+                }
             }
         } catch (error) {
             console.error("Error parsing WebSocket message:", error);
@@ -49,16 +51,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     function displayResults(results, title) {
-        if (results.length === 0) {
-            searchResults.innerHTML += `<p>No ${title} found.</p>`;
-            return;
-        }
-
         let resultsHTML = `<h2>${title}</h2>`;
         results.forEach((result, index) => {
+            const documentType = result.document_type;
+            const category = result.category;
+            const fileName = result.file_name;
+            const page = result.page;
+            const link = `pdf/${documentType}/${category}/${fileName}?page=${page}`;
+            const linkText = `/${documentType}/${category}/${fileName}, p.${page}`;
+            
             resultsHTML += `
                 <div class="result">
-                    <h3>${index + 1}. <a href="${result.link}" target="_blank">${result.link_text}</a></h3>
+                    <h3>${index + 1}. <a href="${link}" target="_blank">${linkText}</a></h3>
                     <p>Category: ${result.category}</p>
                     <p>${result.page_text}</p>
                     <p>Distance: ${result.distance.toFixed(4)}</p>

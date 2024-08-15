@@ -36,9 +36,9 @@ async def read_root(request: Request):
 
     return templates.TemplateResponse("index.html", {"request": request, "categories": categories})
 
-@app.get("/pdf/{category}/{path:path}")
-async def stream_pdf(category: str, path: str, page: int = None):
-    url = f"{BACKEND_HTTP_URL}/pdf/{category}/{path}"
+@app.get("/pdf/{document_type}/{category}/{path:path}")
+async def stream_pdf(document_type: str, category: str, path: str, page: int = None):
+    url = f"{BACKEND_HTTP_URL}/pdf/{document_type}/{category}/{path}"
     if page is not None:
         url += f"?page={page}"
     logger.info(f"Proxying PDF from backend: {url}")
