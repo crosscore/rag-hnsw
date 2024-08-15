@@ -58,7 +58,7 @@ services:
             - aurora
         networks:
             - app_network
-        command: python /app/src/batch_processor.py
+        command: tail -f /dev/null
 
     aurora:
         container_name: aurora
