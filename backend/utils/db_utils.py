@@ -49,12 +49,12 @@ def get_available_categories():
         logger.error(f"Error fetching available categories: {e}")
         raise
 
-def get_search_query(index_type):
+def get_search_query(index_type, table_name):
     vector_type = "halfvec(3072)" if index_type == "hnsw" else "vector(3072)"
     operator = "<#>"
     query = sql.SQL("""
-    SELECT file_name, document_page, chunk_no, chunk_text,
-            (chunk_vector::{vector_type} {operator} %s::{vector_type}) AS distance
+    SELECT file_name, document_page, page_text,
+            (embedding::{vector_type} {operator} %s::{vector_type}) AS distance
     FROM {table}
     WHERE business_category = %s
     ORDER BY distance ASC
@@ -62,11 +62,30 @@ def get_search_query(index_type):
     """).format(
         vector_type=sql.SQL(vector_type),
         operator=sql.SQL(operator),
-        table=sql.Identifier(MANUAL_TABLE_NAME)
+        table=sql.Identifier(table_name)
     )
     return query
 
-def execute_search_query(conn, cursor, question_vector, category, top_n):
-    query = get_search_query(INDEX_TYPE)
+def execute_search_query(conn, cursor, question_vector, category, top_n, table_name):
+    query = get_search_query(INDEX_TYPE, table_name)
     cursor.execute(query, (question_vector, category, top_n))
-    return cursor.fetchall()
+    results = cursor.fetchall()
+    
+    if len(results) < top_n:
+        additional_query = sql.SQL("""
+        SELECT file_name, document_page, page_text,
+                (embedding::{vector_type} {operator} %s::{vector_type}) AS distance
+        FROM {table}
+        WHERE business_category != %s
+        ORDER BY distance ASC
+        LIMIT %s;
+        """).format(
+            vector_type=sql.SQL("halfvec(3072)" if INDEX_TYPE == "hnsw" else "vector(3072)"),
+            operator=sql.SQL("<#>"),
+            table=sql.Identifier(table_name)
+        )
+        cursor.execute(additional_query, (question_vector, category, top_n - len(results)))
+        additional_results = cursor.fetchall()
+        results.extend(additional_results)
+    
+    return results[:top_n]

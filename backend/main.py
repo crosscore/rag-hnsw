@@ -6,7 +6,7 @@ from starlette.websockets import WebSocketDisconnect
 import logging
 import os
 from utils.pdf_utils import get_pdf
-from utils.db_utils import get_db_connection, get_search_query, get_available_categories
+from utils.db_utils import get_db_connection, get_search_query, get_available_categories, execute_search_query
 from config import *
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -72,14 +72,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     ).data[0].embedding
 
                 with get_db_connection() as (conn, cursor):
-                    manual_query = get_search_query(INDEX_TYPE, MANUAL_TABLE_NAME)
-                    faq_query = get_search_query(INDEX_TYPE, FAQ_TABLE_NAME)
-                    
-                    cursor.execute(manual_query, (question_vector, category, top_n))
-                    manual_results = cursor.fetchall()
-                    
-                    cursor.execute(faq_query, (question_vector, category, top_n))
-                    faq_results = cursor.fetchall()
+                    manual_results = execute_search_query(conn, cursor, question_vector, category, top_n, MANUAL_TABLE_NAME)
+                    faq_results = execute_search_query(conn, cursor, question_vector, category, top_n, FAQ_TABLE_NAME)
                     
                     conn.commit()
 
@@ -89,11 +83,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 faq_texts = []
 
                 for result in manual_results:
-                    file_name, document_page, chunk_no, page_text, distance = result
+                    file_name, document_page, page_text, distance = result
                     formatted_result = {
                         "file_name": str(file_name),
                         "page": int(document_page),
-                        "chunk_no": int(chunk_no),
                         "page_text": str(page_text),
                         "distance": float(distance),
                         "category": category,
@@ -105,11 +98,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     manual_texts.append(page_text)
 
                 for result in faq_results:
-                    file_name, document_page, chunk_no, page_text, distance = result
+                    file_name, document_page, page_text, distance = result
                     formatted_result = {
                         "file_name": str(file_name),
                         "page": int(document_page),
-                        "chunk_no": int(chunk_no),
                         "page_text": str(page_text),
                         "distance": float(distance),
                         "category": category,
@@ -138,39 +130,52 @@ async def websocket_endpoint(websocket: WebSocket):
                     {question}
 
                     参考文書(マニュアル)：
-                    {' '.join(manual_texts[:3])}
+                    {' '.join(manual_texts)}
 
                     参考文書(Q&A):
-                    {' '.join(faq_texts[:3])}
+                    {' '.join(faq_texts)}
                     """
 
-                if ENABLE_OPENAI:
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        temperature=1.00,
-                        max_tokens=100,
-                        messages=[
-                            {"role": "system", "content": "You are a helpful assistant."},
-                            {"role": "user", "content": formatted_prompt}
-                        ],
-                        stream=True
-                    )
+                    if ENABLE_OPENAI:
+                        response = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            temperature=1.00,
+                            max_tokens=100,
+                            messages=[
+                                {"role": "system", "content": "You are a helpful assistant."},
+                                {"role": "user", "content": formatted_prompt}
+                            ],
+                            stream=True
+                        )
+                    else:
+                        response = client.chat.completions.create(
+                            model=AZURE_OPENAI_DEPLOYMENT,
+                            messages=[
+                                {"role": "system", "content": "You are a helpful assistant."},
+                                {"role": "user", "content": formatted_prompt}
+                            ],
+                            stream=True
+                        )
+
+                    try:
+                        for chunk in response:
+                            if chunk.choices and len(chunk.choices) > 0:
+                                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                                    content = chunk.choices[0].delta.content
+                                    if content:
+                                        await websocket.send_json({"ai_response_chunk": content})
+                            else:
+                                logger.warning("Received an empty chunk from OpenAI API")
+                    except Exception as e:
+                        logger.error(f"Error processing AI response: {str(e)}")
+                        await websocket.send_json({"error": "Error generating AI response"})
+                    finally:
+                        await websocket.send_json({"ai_response_end": True})
+                        logger.info(f"Sent streaming AI response for question: {question[:50]}...")
                 else:
-                    response = client.chat.completions.create(
-                        model=AZURE_OPENAI_DEPLOYMENT,
-                        messages=[
-                            {"role": "system", "content": "You are a helpful assistant."},
-                            {"role": "user", "content": formatted_prompt}
-                        ],
-                        stream=True
-                    )
-
-                for chunk in response:
-                    if chunk.choices[0].delta.content:
-                        await websocket.send_json({"ai_response_chunk": chunk.choices[0].delta.content})
-
-                await websocket.send_json({"ai_response_end": True})
-                logger.info(f"Sent streaming AI response for question: {question[:50]}...")
+                    await websocket.send_json({"ai_response_chunk": "申し訳ありませんが、該当する情報が見つかりませんでした。"})
+                    await websocket.send_json({"ai_response_end": True})
+                    logger.info("No relevant information found for the query")
 
             except Exception as e:
                 logger.error(f"Error processing query: {str(e)}")
@@ -187,3 +192,4 @@ if __name__ == "__main__":
     import uvicorn
     logger.info("Starting the application")
     uvicorn.run(app, host="0.0.0.0", port=8001, log_level="info")
+    
