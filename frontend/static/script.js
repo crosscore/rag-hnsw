@@ -1,30 +1,32 @@
 /* rag-hnsw/frontend/static/script.js */
 
-document.addEventListener("DOMContentLoaded", () => {
-    const searchInput = document.getElementById("search-input");
-    const searchButton = document.getElementById("search-button");
-    const searchResults = document.getElementById("search-results");
-    const categorySelect = document.getElementById("category-select");
-    const aiResponse = document.getElementById("ai-response");
+document.addEventListener("DOMContentLoaded", function() {
+    var searchInput = document.getElementById("search-input");
+    var searchButton = document.getElementById("search-button");
+    var searchResults = document.getElementById("search-results");
+    var categorySelect = document.getElementById("category-select");
+    var aiResponse = document.getElementById("ai-response");
 
-    let socket = new WebSocket("ws://" + window.location.host + "/ws");
+    var socket = new WebSocket("ws://" + window.location.host + "/ws");
 
-    socket.onopen = () => console.log("WebSocket connection established");
+    socket.onopen = function() {
+        console.log("WebSocket connection established");
+    };
 
-    socket.onmessage = (event) => {
+    socket.onmessage = function(event) {
         try {
-            const data = JSON.parse(event.data);
+            var data = JSON.parse(event.data);
             if (data.error) {
-                searchResults.innerHTML = `<p>Error: ${data.error}</p>`;
+                searchResults.innerHTML = "<p>Error: " + data.error + "</p>";
             } else if (data.manual_results) {
                 displayResults(data.manual_results, "Manual Search Results");
             } else if (data.faq_results) {
                 displayResults(data.faq_results, "FAQ Search Results");
             } else if (data.ai_response_chunk) {
-                const responseP = aiResponse.querySelector("p") || aiResponse.appendChild(document.createElement("p"));
+                var responseP = aiResponse.querySelector("p") || aiResponse.appendChild(document.createElement("p"));
                 responseP.innerHTML += data.ai_response_chunk;
             } else if (data.ai_response_end) {
-                const responseP = aiResponse.querySelector("p");
+                var responseP = aiResponse.querySelector("p");
                 if (responseP) {
                     responseP.innerHTML += "<br><em>(Response complete)</em>";
                 }
@@ -34,13 +36,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    socket.onerror = () => {
+    socket.onerror = function() {
         searchResults.innerHTML = "<p>Error: Connection failed. Please try again later.</p>";
     };
 
-    searchButton.addEventListener("click", () => {
-        const query = searchInput.value;
-        const category = categorySelect.value;
+    searchButton.addEventListener("click", function() {
+        var query = searchInput.value;
+        var category = categorySelect.value;
         if (query && category) {
             socket.send(JSON.stringify({ question: query, category: category }));
             searchResults.innerHTML = "<p>Searching...</p>";
@@ -51,23 +53,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     function displayResults(results, title) {
-        let resultsHTML = `<h2>${title}</h2>`;
-        results.forEach((result, index) => {
-            const documentType = result.document_type;
-            const category = result.category;
-            const fileName = result.file_name;
-            const page = result.page;
-            const link = `pdf/${documentType}/${category}/${fileName}?page=${page}`;
-            const linkText = `/${documentType}/${category}/${fileName}, p.${page}`;
+        var resultsHTML = "<h2>" + title + "</h2>";
+        results.forEach(function(result, index) {
+            var documentType = result.document_type;
+            var category = result.category;
+            var fileName = result.file_name;
+            var page = result.page;
+            var link = "pdf/" + documentType + "/" + category + "/" + encodeURIComponent(fileName) + "?page=" + page;
+            var linkText = "/" + documentType + "/" + category + "/" + fileName + ", p." + page;
             
-            resultsHTML += `
-                <div class="result">
-                    <h3>${index + 1}. <a href="${link}" target="_blank">${linkText}</a></h3>
-                    <p>Category: ${result.category}</p>
-                    <p>${result.page_text}</p>
-                    <p>Distance: ${result.distance.toFixed(4)}</p>
-                </div>
-            `;
+            resultsHTML += 
+                '<div class="result">' +
+                    "<h3>" + (index + 1) + '. <a href="' + link + '" target="_blank">' + linkText + "</a></h3>" +
+                    "<p>Category: " + result.category + "</p>" +
+                    "<p>" + result.page_text + "</p>" +
+                    "<p>Distance: " + result.distance.toFixed(4) + "</p>" +
+                "</div>";
         });
         searchResults.innerHTML += resultsHTML;
     }
