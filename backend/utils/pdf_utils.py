@@ -1,21 +1,20 @@
-# rag-hnsw/backend/utils/pdf_utils.py
+# backend/utils/pdf_utils.py
 import os
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 from io import BytesIO
 from pypdf import PdfReader, PdfWriter
 import logging
-from urllib.parse import unquote
+from urllib.parse import quote
 from config import PDF_MANUAL_DIR, PDF_FAQ_DIR
 
 logger = logging.getLogger(__name__)
 
 def get_pdf(document_type: str, category: str, path: str, page: int = None):
-    decoded_path = unquote(path)
     if document_type == "manual":
-        file_path = os.path.join(PDF_MANUAL_DIR, category, decoded_path)
+        file_path = os.path.join(PDF_MANUAL_DIR, category, path)
     elif document_type == "faq":
-        file_path = os.path.join(PDF_FAQ_DIR, category, decoded_path)
+        file_path = os.path.join(PDF_FAQ_DIR, category, path)
     else:
         raise HTTPException(status_code=400, detail=f"Invalid document type: {document_type}")
 
@@ -39,10 +38,17 @@ def get_pdf(document_type: str, category: str, path: str, page: int = None):
             pdf_bytes = BytesIO()
             pdf_writer.write(pdf_bytes)
             pdf_bytes.seek(0)
-            return StreamingResponse(pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{os.path.basename(file_path)}_page_{page}.pdf"'})
+            
+            headers = {
+                "Content-Disposition": f'inline; filename*=UTF-8\'\'{quote(os.path.basename(path))}_page_{page}.pdf'
+            }
+            return StreamingResponse(pdf_bytes, media_type="application/pdf", headers=headers)
         else:
             logger.info(f"Serving full PDF file: {file_path}")
-            return FileResponse(file_path, media_type="application/pdf", filename=os.path.basename(file_path))
+            headers = {
+                "Content-Disposition": f'inline; filename*=UTF-8\'\'{quote(os.path.basename(path))}'
+            }
+            return FileResponse(file_path, media_type="application/pdf", headers=headers)
     except Exception as e:
         logger.error(f"Error serving PDF file: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error serving PDF file: {str(e)}")
