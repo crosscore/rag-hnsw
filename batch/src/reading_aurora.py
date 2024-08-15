@@ -1,4 +1,4 @@
-# rag-hnsw/backend/src/reading_aurora.py
+# rag-hnsw/batch/src/reading_aurora.py
 import os
 import logging
 import psycopg

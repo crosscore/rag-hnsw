@@ -1,4 +1,4 @@
-# rag-hnsw/backend/config.py
+# rag-hnsw/batch/config.py
 import os
 import json
 from dotenv import load_dotenv

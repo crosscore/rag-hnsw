@@ -1,4 +1,4 @@
-# rag-hnsw/backend/src/csv_to_aurora.py
+# rag-hnsw/batch/src/csv_to_aurora.py
 import os
 import pandas as pd
 import psycopg

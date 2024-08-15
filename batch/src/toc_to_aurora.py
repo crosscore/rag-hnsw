@@ -1,4 +1,4 @@
-# rag-hnsw/backend/src/toc_to_aurora.py
+# rag-hnsw/batch/src/toc_to_aurora.py
 import os
 import pandas as pd
 import psycopg
@@ -108,8 +108,13 @@ def process_toc_files():
                     conn.commit()
                     logger.info("TOC table created successfully")
 
-                    xlsx_files = [os.path.join(TOC_XLSX_DIR, f) for f in os.listdir(TOC_XLSX_DIR) if f.endswith('.xlsx')]
-                    logger.info(f"Found {len(xlsx_files)} XLSX files in {TOC_XLSX_DIR}")
+                    xlsx_files = []
+                    for root, _, files in os.walk(TOC_XLSX_DIR):
+                        for file in files:
+                            if file.endswith('.xlsx'):
+                                xlsx_files.append(os.path.join(root, file))
+
+                    logger.info(f"Found {len(xlsx_files)} XLSX files in {TOC_XLSX_DIR} and its subdirectories")
 
                     for xlsx_file in xlsx_files:
                         try:
