@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (query && category) {
             socket.send(JSON.stringify({ question: query, category: category }));
             searchResults.innerHTML = "<p>Searching...</p>";
-            aiResponse.innerHTML = "<h2>AI Response:</h2><p>Waiting for results...</p>";
+            aiResponse.innerHTML = "<h2>AI Response:</h2>";
         } else {
             searchResults.innerHTML = "<p>Please enter a query and select a category</p>";
         }
