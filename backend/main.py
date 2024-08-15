@@ -42,13 +42,7 @@ async def get_categories():
 
 @app.get("/pdf/{document_type}/{category}/{path:path}")
 async def serve_pdf(document_type: str, category: str, path: str, page: int = None):
-    if document_type not in ["manual", "faq"]:
-        raise HTTPException(status_code=400, detail="Invalid document type")
-    
-    pdf_dir = PDF_MANUAL_DIR if document_type == "manual" else PDF_FAQ_DIR
-    file_path = os.path.join(pdf_dir, category, path)
-    
-    # ... (既存のコード)
+    return get_pdf(document_type, category, path, page)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

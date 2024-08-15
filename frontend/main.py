@@ -9,6 +9,7 @@ import asyncio
 import logging
 import httpx
 import json
+from urllib.parse import unquote
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -38,7 +39,8 @@ async def read_root(request: Request):
 
 @app.get("/pdf/{document_type}/{category}/{path:path}")
 async def stream_pdf(document_type: str, category: str, path: str, page: int = None):
-    url = f"{BACKEND_HTTP_URL}/pdf/{document_type}/{category}/{path}"
+    decoded_path = unquote(path)
+    url = f"{BACKEND_HTTP_URL}/pdf/{document_type}/{category}/{decoded_path}"
     if page is not None:
         url += f"?page={page}"
     logger.info(f"Proxying PDF from backend: {url}")
@@ -51,7 +53,7 @@ async def stream_pdf(document_type: str, category: str, path: str, page: int = N
                         yield chunk
                 else:
                     error_content = await response.aread()
-                    error_message = error_content.decode()
+                    error_message = error_content.decode('utf-8', errors='replace')
                     logger.error(f"Error from backend: {error_message}")
                     raise HTTPException(status_code=response.status_code, detail=error_message)
 
@@ -59,7 +61,7 @@ async def stream_pdf(document_type: str, category: str, path: str, page: int = N
         return StreamingResponse(
             stream_response(),
             media_type="application/pdf",
-            headers={"Content-Disposition": f'inline; filename="{os.path.basename(path)}"'}
+            headers={"Content-Disposition": f'inline; filename="{os.path.basename(decoded_path)}"'}
         )
     except httpx.HTTPStatusError as e:
         logger.error(f"HTTP error occurred while fetching PDF: {str(e)}")

@@ -5,12 +5,20 @@ from fastapi.responses import StreamingResponse, FileResponse
 from io import BytesIO
 from pypdf import PdfReader, PdfWriter
 import logging
-from config import PDF_INPUT_DIR, DATA_DIR
+from urllib.parse import unquote
+from config import PDF_MANUAL_DIR, PDF_FAQ_DIR
 
 logger = logging.getLogger(__name__)
 
-def get_pdf(category: str, path: str, page: int = None):
-    file_path = os.path.join(DATA_DIR, PDF_INPUT_DIR, "manual", category, path)
+def get_pdf(document_type: str, category: str, path: str, page: int = None):
+    decoded_path = unquote(path)
+    if document_type == "manual":
+        file_path = os.path.join(PDF_MANUAL_DIR, category, decoded_path)
+    elif document_type == "faq":
+        file_path = os.path.join(PDF_FAQ_DIR, category, decoded_path)
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid document type: {document_type}")
+
     logger.info(f"Attempting to access PDF file: {file_path}")
     
     if not os.path.exists(file_path):
@@ -38,4 +46,3 @@ def get_pdf(category: str, path: str, page: int = None):
     except Exception as e:
         logger.error(f"Error serving PDF file: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error serving PDF file: {str(e)}")
-    
