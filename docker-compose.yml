@@ -44,8 +44,8 @@ services:
 
     batch:
         container_name: batch
-        build: 
-            context: ./backend
+        build:
+            context: ./batch
         env_file:
             - .env
         environment:
