@@ -83,13 +83,13 @@ def calculate_sha256(file_path):
     return hash_sha256.hexdigest()
 
 def preprocess_faq_text(text):
-    faq_id_match = re.search(r'#ID\n(\d+)', text)
-    faq_id = int(faq_id_match.group(1)) if faq_id_match else None
+    faq_no_match = re.search(r'#(ID|No)\n(\d+)', text)
+    faq_no = int(faq_no_match.group(1)) if faq_no_match else None
 
     processed_text_match = re.search(r'#質問・疑問\n(.*)', text, re.DOTALL)
     processed_text = processed_text_match.group(0) if processed_text_match else text
 
-    return faq_id, processed_text.strip()
+    return faq_no, processed_text.strip()
 
 def split_text_into_chunks(text):
     text_splitter = CharacterTextSplitter(
@@ -117,9 +117,9 @@ def process_pdf(file_path, category, document_type):
 
         if page_text.strip():  # Only process non-empty pages
             if document_type == "faq":
-                faq_id, processed_text = preprocess_faq_text(page_text)
+                faq_no, processed_text = preprocess_faq_text(page_text)
             else:
-                faq_id, processed_text = None, page_text
+                faq_no, processed_text = None, page_text
 
             chunks = split_text_into_chunks(processed_text)
             for chunk in chunks:
@@ -142,8 +142,8 @@ def process_pdf(file_path, category, document_type):
                     'created_date_time': current_time,
                     'embedding': response.data[0].embedding
                 }
-                if faq_id is not None:
-                    data['faq_id'] = faq_id
+                if faq_no is not None:
+                    data['faq_no'] = faq_no
                 processed_data.append(data)
 
     logger.info(f"Processed {file_path}: {len(pages)} pages, {total_chunks} chunks")

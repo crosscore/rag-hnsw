@@ -51,7 +51,7 @@ def create_table_and_index(cursor, table_name):
         {});
     """).format(
         sql.Identifier(table_name),
-        sql.SQL(", faq_id INTEGER" if table_name == FAQ_TABLE_NAME else "")
+        sql.SQL(", faq_no INTEGER" if table_name == FAQ_TABLE_NAME else "")
     )
 
     try:
@@ -98,7 +98,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072){});
     """).format(
         sql.Identifier(table_name),
-        sql.SQL(", faq_id" if table_name == FAQ_TABLE_NAME else ""),
+        sql.SQL(", faq_no" if table_name == FAQ_TABLE_NAME else ""),
         sql.SQL(", %s" if table_name == FAQ_TABLE_NAME else "")
     )
 
@@ -126,7 +126,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         ]
 
         if table_name == FAQ_TABLE_NAME:
-            row_data.append(row['faq_id'])
+            row_data.append(row['faq_no'])
 
         data.append(tuple(row_data))
 
