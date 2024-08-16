@@ -44,7 +44,8 @@ def create_table_and_index(cursor, table_name):
         business_category SMALLINT,
         document_type TEXT,
         document_page SMALLINT,
-        page_text TEXT,
+        chunk_no INTEGER,
+        chunk_text TEXT,
         created_date_time TIMESTAMPTZ,
         embedding vector(3072)
         {});
@@ -93,8 +94,8 @@ def process_csv_file(file_path, cursor, table_name, document_type):
 
     insert_query = sql.SQL("""
     INSERT INTO {}
-    (file_name, file_path, sha256_hash, business_category, document_type, document_page, page_text, created_date_time, embedding{})
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072){});
+    (file_name, file_path, sha256_hash, business_category, document_type, document_page, chunk_no, chunk_text, created_date_time, embedding{})
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072){});
     """).format(
         sql.Identifier(table_name),
         sql.SQL(", faq_id" if table_name == FAQ_TABLE_NAME else ""),
@@ -118,7 +119,8 @@ def process_csv_file(file_path, cursor, table_name, document_type):
             business_category,
             document_type,
             row['document_page'],
-            row['page_text'],
+            row['chunk_no'],
+            row['chunk_text'],
             row['created_date_time'],
             embedding
         ]

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import hashlib
 import traceback
 import re
+from langchain_text_splitters import CharacterTextSplitter
 
 log_dir = os.path.join(DATA_DIR, "log")
 os.makedirs(log_dir, exist_ok=True)
@@ -90,6 +91,15 @@ def preprocess_faq_text(text):
 
     return faq_id, processed_text.strip()
 
+def split_text_into_chunks(text):
+    text_splitter = CharacterTextSplitter(
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        separator=SEPARATOR
+    )
+    chunks = text_splitter.split_text(text)
+    return chunks if chunks else [text]
+
 def process_pdf(file_path, category, document_type):
     logger.info(f"Processing {document_type} PDF: {file_path}")
     pages = extract_text_from_pdf(file_path)
@@ -99,6 +109,7 @@ def process_pdf(file_path, category, document_type):
 
     processed_data = []
     sha256_hash = calculate_sha256(file_path)
+    total_chunks = 0
 
     for page in pages:
         page_text = page["page_content"]
@@ -110,28 +121,32 @@ def process_pdf(file_path, category, document_type):
             else:
                 faq_id, processed_text = None, page_text
 
-            response = create_embedding(processed_text)
-            if response is None:
-                logger.warning(f"Failed to create embedding for page {page_num}")
-                continue
+            chunks = split_text_into_chunks(processed_text)
+            for chunk in chunks:
+                total_chunks += 1
+                response = create_embedding(chunk)
+                if response is None:
+                    logger.warning(f"Failed to create embedding for chunk {total_chunks} on page {page_num}")
+                    continue
 
-            current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
-            data = {
-                'file_name': os.path.basename(file_path),
-                'file_path': file_path,
-                'sha256_hash': sha256_hash,
-                'business_category': category,
-                'document_type': document_type,
-                'document_page': str(page_num),
-                'page_text': processed_text,
-                'created_date_time': current_time,
-                'embedding': response.data[0].embedding
-            }
-            if faq_id is not None:
-                data['faq_id'] = faq_id
-            processed_data.append(data)
+                current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
+                data = {
+                    'file_name': os.path.basename(file_path),
+                    'file_path': file_path,
+                    'sha256_hash': sha256_hash,
+                    'business_category': category,
+                    'document_type': document_type,
+                    'document_page': str(page_num),
+                    'chunk_no': total_chunks,
+                    'chunk_text': chunk,
+                    'created_date_time': current_time,
+                    'embedding': response.data[0].embedding
+                }
+                if faq_id is not None:
+                    data['faq_id'] = faq_id
+                processed_data.append(data)
 
-    logger.info(f"Processed {file_path}: {len(pages)} pages")
+    logger.info(f"Processed {file_path}: {len(pages)} pages, {total_chunks} chunks")
     return pd.DataFrame(processed_data)
 
 def process_pdf_files(input_dir, output_dir, document_type):

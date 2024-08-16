@@ -28,6 +28,11 @@ DEAD_LETTER_QUEUE_URL=os.getenv("DEAD_LETTER_QUEUE_URL")
 LOCAL_UPLOAD_PATH = os.getenv("LOCAL_UPLOAD_PATH")
 LOCAL_DOWNLOAD_PATH = os.getenv("LOCAL_DOWNLOAD_PATH")
 
+# CharacterTextSplitter settings
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 1000))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 0))
+SEPARATOR = os.getenv("SEPARATOR", "\n\n")
+
 # Base directories
 DATA_DIR = os.getenv("DATA_DIR", "/app/data")
 PDF_INPUT_DIR = os.path.join(DATA_DIR, "pdf")

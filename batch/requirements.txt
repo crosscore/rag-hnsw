@@ -6,3 +6,4 @@ pypdf
 psycopg[binary]
 pandas
 openpyxl
+langchain-text-splitters
