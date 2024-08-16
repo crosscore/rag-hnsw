@@ -6,6 +6,9 @@ from psycopg import sql
 from config import *
 import logging
 from contextlib import contextmanager
+from datetime import datetime
+import pytz
+import hashlib
 
 log_dir = os.path.join(DATA_DIR, "log")
 os.makedirs(log_dir, exist_ok=True)
@@ -38,14 +41,10 @@ def create_toc_table(cursor):
     create_table_query = sql.SQL("""
     CREATE TABLE IF NOT EXISTS {} (
         id SERIAL PRIMARY KEY,
-        manual_category TEXT,
-        chapter TEXT,
-        section TEXT,
-        details TEXT,
-        toc_page TEXT,
-        pdf_filename TEXT,
-        pdf_start_page INTEGER,
-        pdf_end_page INTEGER
+        file_path TEXT,
+        toc_data TEXT,
+        sha256_hash TEXT,
+        created_date_time TIMESTAMPTZ
     );
     """).format(sql.Identifier(TOC_TABLE_NAME))
 
@@ -71,31 +70,26 @@ def process_xlsx_file(file_path, cursor):
         logger.error(f"Error reading XLSX file {file_path}: {e}")
         return
 
-    # Rename columns to match the database table
-    column_mapping = {
-        'マニュアル区分': 'manual_category',
-        '章': 'chapter',
-        '節': 'section',
-        '詳細': 'details',
-        'ページ(目次/フッター)': 'toc_page',
-        'PDFファイル名': 'pdf_filename',
-        'PDF開始ページ': 'pdf_start_page',
-        'PDF終了ページ': 'pdf_end_page'
-    }
-    df.rename(columns=column_mapping, inplace=True)
+    # Convert DataFrame to CSV string
+    toc_data = df.to_csv(index=False)
+
+    # Calculate SHA256 hash of the file
+    sha256_hash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
+
+    # Get current datetime in Tokyo timezone
+    tokyo_tz = pytz.timezone('Asia/Tokyo')
+    created_date_time = datetime.now(tokyo_tz)
 
     insert_query = sql.SQL("""
-    INSERT INTO {} (manual_category, chapter, section, details, toc_page, pdf_filename, pdf_start_page, pdf_end_page)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+    INSERT INTO {} (file_path, toc_data, sha256_hash, created_date_time)
+    VALUES (%s, %s, %s, %s);
     """).format(sql.Identifier(TOC_TABLE_NAME))
 
-    data = df.values.tolist()
-
     try:
-        cursor.executemany(insert_query, data)
-        logger.info(f"Inserted {len(data)} rows into the {TOC_TABLE_NAME} table from {file_path}")
+        cursor.execute(insert_query, (file_path, toc_data, sha256_hash, created_date_time))
+        logger.info(f"Inserted data from {file_path} into the {TOC_TABLE_NAME} table")
     except Exception as e:
-        logger.error(f"Error inserting batch into {TOC_TABLE_NAME} from {file_path}: {e}")
+        logger.error(f"Error inserting data into {TOC_TABLE_NAME} from {file_path}: {e}")
         raise
 
 def process_toc_files():
