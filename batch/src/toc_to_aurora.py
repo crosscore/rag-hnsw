@@ -43,7 +43,7 @@ def create_toc_table(cursor):
         id SERIAL PRIMARY KEY,
         file_path TEXT,
         toc_data TEXT,
-        sha256_hash TEXT,
+        checksum TEXT,
         created_date_time TIMESTAMPTZ
     );
     """).format(sql.Identifier(TOC_TABLE_NAME))
@@ -74,19 +74,19 @@ def process_xlsx_file(file_path, cursor):
     toc_data = df.to_csv(index=False)
 
     # Calculate SHA256 hash of the file
-    sha256_hash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
+    checksum = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
 
     # Get current datetime in Tokyo timezone
     tokyo_tz = pytz.timezone('Asia/Tokyo')
     created_date_time = datetime.now(tokyo_tz)
 
     insert_query = sql.SQL("""
-    INSERT INTO {} (file_path, toc_data, sha256_hash, created_date_time)
+    INSERT INTO {} (file_path, toc_data, checksum, created_date_time)
     VALUES (%s, %s, %s, %s);
     """).format(sql.Identifier(TOC_TABLE_NAME))
 
     try:
-        cursor.execute(insert_query, (file_path, toc_data, sha256_hash, created_date_time))
+        cursor.execute(insert_query, (file_path, toc_data, checksum, created_date_time))
         logger.info(f"Inserted data from {file_path} into the {TOC_TABLE_NAME} table")
     except Exception as e:
         logger.error(f"Error inserting data into {TOC_TABLE_NAME} from {file_path}: {e}")

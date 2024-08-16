@@ -108,7 +108,7 @@ def process_pdf(file_path, category, document_type):
         return None
 
     processed_data = []
-    sha256_hash = calculate_sha256(file_path)
+    checksum = calculate_sha256(file_path)
     total_chunks = 0
 
     for page in pages:
@@ -133,7 +133,7 @@ def process_pdf(file_path, category, document_type):
                 data = {
                     'file_name': os.path.basename(file_path),
                     'file_path': file_path,
-                    'sha256_hash': sha256_hash,
+                    'checksum': checksum,
                     'business_category': category,
                     'document_type': document_type,
                     'document_page': str(page_num),

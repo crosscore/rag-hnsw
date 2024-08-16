@@ -40,7 +40,7 @@ def create_table_and_index(cursor, table_name):
         id SERIAL PRIMARY KEY,
         file_name TEXT,
         file_path TEXT,
-        sha256_hash TEXT,
+        checksum TEXT,
         business_category SMALLINT,
         document_type TEXT,
         document_page SMALLINT,
@@ -94,7 +94,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
 
     insert_query = sql.SQL("""
     INSERT INTO {}
-    (file_name, file_path, sha256_hash, business_category, document_type, document_page, chunk_no, chunk_text, created_date_time, embedding{})
+    (file_name, file_path, checksum, business_category, document_type, document_page, chunk_no, chunk_text, created_date_time, embedding{})
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072){});
     """).format(
         sql.Identifier(table_name),
@@ -115,7 +115,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         row_data = [
             row['file_name'],
             row['file_path'],
-            row['sha256_hash'],
+            row['checksum'],
             business_category,
             document_type,
             row['document_page'],
