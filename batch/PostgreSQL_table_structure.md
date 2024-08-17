@@ -7,7 +7,7 @@
 3. すべての日時はAsia/Tokyo（日本時間）のタイムゾーンで保存されます。
 4. SMALLINT は PostgreSQL では int2 と同等です。
 5. INTEGER は PostgreSQL では int4 と同等です。
-6. vector(3072)データ型はpgvector拡張機能を使用しています。事前にPostgreSQLにpgvector拡張機能をインストールする必要があります。
+6. vector(3072)データ型はpgvector拡張機能を使用しています。Dockerfileの設定により、事前にauroraコンテナのPostgreSQLにpgvector拡張機能がインストールされています。
 7. MANUAL_TABLEとFAQ_TABLEのembeddingカラムにはHNSWインデックスが作成されます。これはpgvector拡張機能によって提供される近似最近傍探索インデックスです。
 8. すべての外部キー（pdf_table_id）はPDF_TABLEのidカラムを参照しています。
 9. CHUNK_SIZEとCHUNK_OVERLAPの設定：
@@ -122,10 +122,10 @@ CREATE TABLE IF NOT EXISTS {FAQ_TABLE} (
 );
 
 ### HNSWインデックスの作成
-CREATE INDEX IF NOT EXISTS {MANUAL_TABLE}_embedding_idx
-ON {MANUAL_TABLE} USING hnsw(embedding vector_ip_ops)
+CREATE INDEX IF NOT EXISTS {MANUAL_TABLE}_embedding_idx ON {MANUAL_TABLE}
+USING hnsw((embedding::halfvec(3072)) halfvec_ip_ops)
 WITH (m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION});
 
-CREATE INDEX IF NOT EXISTS {FAQ_TABLE}_embedding_idx
-ON {FAQ_TABLE} USING hnsw(embedding vector_ip_ops)
+CREATE INDEX IF NOT EXISTS {FAQ_TABLE}_embedding_idx ON {FAQ_TABLE}
+USING hnsw((embedding::halfvec(3072)) halfvec_ip_ops)
 WITH (m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION});

@@ -1,3 +1,4 @@
+# rag-hnsw/batch/src/csv_to_aurora.py
 import os
 import pandas as pd
 from psycopg import sql
@@ -25,15 +26,14 @@ def process_csv_file(file_path, cursor, table_name, document_type):
     pdf_table_id = uuid.uuid4()
     insert_pdf_query = sql.SQL("""
     INSERT INTO {}
-    (id, file_path, folder_name, file_name, document_type, checksum, created_date_time)
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    (id, file_path, file_name, document_type, checksum, created_date_time)
+    VALUES (%s, %s, %s, %s, %s, %s)
     RETURNING id;
     """).format(sql.Identifier(PDF_TABLE))
 
     pdf_data = (
         pdf_table_id,
         df['file_path'].iloc[0],
-        os.path.dirname(df['file_path'].iloc[0]),
         df['file_name'].iloc[0],
         1 if document_type == 'manual' else 2,
         df['checksum'].iloc[0],

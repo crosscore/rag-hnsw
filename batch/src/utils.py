@@ -42,16 +42,23 @@ def create_table(cursor, table_name, create_query):
         raise
 
 def create_tables(cursor):
+    # Install pgvector extension if not exists
+    try:
+        cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+        logger.info("pgvector extension installed or already exists")
+    except psycopg.Error as e:
+        logger.error(f"Error installing pgvector extension: {e}")
+        raise
+
     tables = [
         (PDF_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
             file_path VARCHAR(1024) NOT NULL,
-            folder_name VARCHAR(1024) NOT NULL,
             file_name VARCHAR(1024) NOT NULL,
             document_type SMALLINT NOT NULL,
             checksum VARCHAR(64) NOT NULL,
-            created_date_time TIMESTAMPTZ
+            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
         )
         """),
         (PDF_CATEGORY_TABLE, """
@@ -59,29 +66,29 @@ def create_tables(cursor):
             id UUID PRIMARY KEY,
             pdf_table_id UUID NOT NULL REFERENCES {}(id),
             business_category SMALLINT NOT NULL,
-            created_date_time TIMESTAMPTZ NOT NULL
+            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
         )
         """),
         (MANUAL_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
-            pdf_table_id UUID NOT NULL REFERENCES {}(id) UNIQUE,
+            pdf_table_id UUID NOT NULL REFERENCES {}(id),
             chunk_no INTEGER NOT NULL,
             document_page SMALLINT NOT NULL,
             chunk_text TEXT NOT NULL,
             embedding VECTOR(3072) NOT NULL,
-            created_date_time TIMESTAMPTZ NOT NULL
+            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
         )
         """),
         (FAQ_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
-            pdf_table_id UUID NOT NULL REFERENCES {}(id) UNIQUE,
+            pdf_table_id UUID NOT NULL REFERENCES {}(id),
             document_page INTEGER NOT NULL,
             faq_no SMALLINT NOT NULL,
             page_text TEXT NOT NULL,
             embedding VECTOR(3072) NOT NULL,
-            created_date_time TIMESTAMPTZ NOT NULL
+            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
         )
         """),
         (TOC_TABLE, """
@@ -90,7 +97,7 @@ def create_tables(cursor):
             pdf_table_id UUID NOT NULL REFERENCES {}(id),
             toc_data TEXT NOT NULL,
             checksum VARCHAR(64) NOT NULL,
-            created_date_time TIMESTAMPTZ
+            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
         )
         """)
     ]
@@ -99,21 +106,22 @@ def create_tables(cursor):
         create_table(cursor, table_name, create_query)
 
 def create_index(cursor, table_name):
-    if INDEX_TYPE == "hnsw":
-        create_index_query = sql.SQL("""
-        CREATE INDEX IF NOT EXISTS {} ON {}
-        USING hnsw ((embedding::halfvec(3072)) halfvec_ip_ops)
-        WITH (m = {}, ef_construction = {});
-        """).format(
-            sql.Identifier(f"hnsw_{table_name}_embedding_idx"),
-            sql.Identifier(table_name),
-            sql.Literal(HNSW_M),
-            sql.Literal(HNSW_EF_CONSTRUCTION)
-        )
-        cursor.execute(create_index_query)
+    index_query = sql.SQL("""
+    CREATE INDEX IF NOT EXISTS {}_embedding_idx ON {}
+    USING hnsw((embedding::halfvec(3072)) halfvec_ip_ops)
+    WITH (m = {}, ef_construction = {});
+    """).format(
+        sql.Identifier(table_name),
+        sql.Identifier(table_name),
+        sql.Literal(HNSW_M),
+        sql.Literal(HNSW_EF_CONSTRUCTION)
+    )
+    try:
+        cursor.execute(index_query)
         logger.info(f"HNSW index creation query executed for {table_name}")
-    else:
-        logger.info(f"No index created for {table_name} as per configuration")
+    except psycopg.Error as e:
+        logger.error(f"Error creating HNSW index for {table_name}: {e}")
+        raise
 
 def get_table_count(cursor, table_name):
     cursor.execute(sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(table_name)))
