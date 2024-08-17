@@ -51,7 +51,7 @@ def create_table_and_index(cursor, table_name):
         {});
     """).format(
         sql.Identifier(table_name),
-        sql.SQL(", faq_no INTEGER" if table_name == FAQ_TABLE_NAME else "")
+        sql.SQL(", faq_no INTEGER" if table_name == FAQ_TABLE else "")
     )
 
     try:
@@ -98,8 +98,8 @@ def process_csv_file(file_path, cursor, table_name, document_type):
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector(3072){});
     """).format(
         sql.Identifier(table_name),
-        sql.SQL(", faq_no" if table_name == FAQ_TABLE_NAME else ""),
-        sql.SQL(", %s" if table_name == FAQ_TABLE_NAME else "")
+        sql.SQL(", faq_no" if table_name == FAQ_TABLE else ""),
+        sql.SQL(", %s" if table_name == FAQ_TABLE else "")
     )
 
     data = []
@@ -125,7 +125,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
             embedding
         ]
 
-        if table_name == FAQ_TABLE_NAME:
+        if table_name == FAQ_TABLE:
             row_data.append(row['faq_no'])
 
         data.append(tuple(row_data))
@@ -155,16 +155,16 @@ def process_csv_files():
             with conn.cursor() as cursor:
                 conn.autocommit = False
                 try:
-                    create_table_and_index(cursor, MANUAL_TABLE_NAME)
-                    create_table_and_index(cursor, FAQ_TABLE_NAME)
+                    create_table_and_index(cursor, MANUAL_TABLE)
+                    create_table_and_index(cursor, FAQ_TABLE)
                     conn.commit()
                     logger.info("Tables created successfully")
 
                     logger.info(f"Processing manual CSVs from: {CSV_MANUAL_DIR}")
-                    process_directory(cursor, CSV_MANUAL_DIR, MANUAL_TABLE_NAME, "manual")
+                    process_directory(cursor, CSV_MANUAL_DIR, MANUAL_TABLE, "manual")
 
                     logger.info(f"Processing FAQ CSVs from: {CSV_FAQ_DIR}")
-                    process_directory(cursor, CSV_FAQ_DIR, FAQ_TABLE_NAME, "faq")
+                    process_directory(cursor, CSV_FAQ_DIR, FAQ_TABLE, "faq")
 
                     conn.commit()
                     logger.info("All CSV files have been processed and inserted into the database.")
@@ -173,7 +173,7 @@ def process_csv_files():
                     logger.error(f"Transaction rolled back due to error: {e}")
                     raise
 
-                for table_name in [MANUAL_TABLE_NAME, FAQ_TABLE_NAME]:
+                for table_name in [MANUAL_TABLE, FAQ_TABLE]:
                     cursor.execute(sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(table_name)))
                     count = cursor.fetchone()[0]
                     logger.info(f"Total records in {table_name}: {count}")

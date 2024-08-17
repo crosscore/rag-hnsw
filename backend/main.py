@@ -72,9 +72,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     ).data[0].embedding
 
                 with get_db_connection() as (conn, cursor):
-                    manual_results = execute_search_query(conn, cursor, question_vector, category, top_n, MANUAL_TABLE_NAME)
-                    faq_results = execute_search_query(conn, cursor, question_vector, category, top_n, FAQ_TABLE_NAME)
-                    
+                    manual_results = execute_search_query(conn, cursor, question_vector, category, top_n, MANUAL_TABLE)
+                    faq_results = execute_search_query(conn, cursor, question_vector, category, top_n, FAQ_TABLE)
+
                     conn.commit()
 
                 formatted_manual_results = []

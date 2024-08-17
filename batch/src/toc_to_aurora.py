@@ -46,19 +46,19 @@ def create_toc_table(cursor):
         checksum TEXT,
         created_date_time TIMESTAMPTZ
     );
-    """).format(sql.Identifier(TOC_TABLE_NAME))
+    """).format(sql.Identifier(TOC_TABLE))
 
     try:
         cursor.execute(create_table_query)
-        logger.info(f"Table {TOC_TABLE_NAME} creation query executed")
+        logger.info(f"Table {TOC_TABLE} creation query executed")
 
-        cursor.execute(sql.SQL("SELECT to_regclass({})").format(sql.Literal(TOC_TABLE_NAME)))
+        cursor.execute(sql.SQL("SELECT to_regclass({})").format(sql.Literal(TOC_TABLE)))
         if cursor.fetchone()[0]:
-            logger.info(f"Confirmed: Table {TOC_TABLE_NAME} exists")
+            logger.info(f"Confirmed: Table {TOC_TABLE} exists")
         else:
-            raise Exception(f"Failed to create table {TOC_TABLE_NAME}")
+            raise Exception(f"Failed to create table {TOC_TABLE}")
     except psycopg.Error as e:
-        logger.error(f"Error creating table {TOC_TABLE_NAME}: {e}")
+        logger.error(f"Error creating table {TOC_TABLE}: {e}")
         raise
 
 def process_xlsx_file(file_path, cursor):
@@ -83,13 +83,13 @@ def process_xlsx_file(file_path, cursor):
     insert_query = sql.SQL("""
     INSERT INTO {} (file_path, toc_data, checksum, created_date_time)
     VALUES (%s, %s, %s, %s);
-    """).format(sql.Identifier(TOC_TABLE_NAME))
+    """).format(sql.Identifier(TOC_TABLE))
 
     try:
         cursor.execute(insert_query, (file_path, toc_data, checksum, created_date_time))
-        logger.info(f"Inserted data from {file_path} into the {TOC_TABLE_NAME} table")
+        logger.info(f"Inserted data from {file_path} into the {TOC_TABLE} table")
     except Exception as e:
-        logger.error(f"Error inserting data into {TOC_TABLE_NAME} from {file_path}: {e}")
+        logger.error(f"Error inserting data into {TOC_TABLE} from {file_path}: {e}")
         raise
 
 def process_toc_files():
@@ -127,9 +127,9 @@ def process_toc_files():
                     logger.error(f"Transaction rolled back due to error: {e}")
                     raise
 
-                cursor.execute(sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(TOC_TABLE_NAME)))
+                cursor.execute(sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(TOC_TABLE)))
                 count = cursor.fetchone()[0]
-                logger.info(f"Total records in {TOC_TABLE_NAME}: {count}")
+                logger.info(f"Total records in {TOC_TABLE}: {count}")
 
     except Exception as e:
         logger.error(f"An error occurred during processing: {e}", exc_info=True)

@@ -56,9 +56,9 @@ HNSW_EF_CONSTRUCTION = HNSW_SETTINGS.get("ef_construction", 256)
 HNSW_EF_SEARCH = HNSW_SETTINGS.get("ef_search", 500)
 
 # PostgreSQL table settings
-MANUAL_TABLE_NAME = os.getenv("MANUAL_TABLE_NAME", "manual_embeddings")
-FAQ_TABLE_NAME = os.getenv("FAQ_TABLE_NAME", "faq_embeddings")
-TOC_TABLE_NAME = "toc_table"
+MANUAL_TABLE = os.getenv("MANUAL_TABLE", "manual_embeddings")
+FAQ_TABLE = os.getenv("FAQ_TABLE", "faq_embeddings")
+TOC_TABLE = "toc_table"
 
 # Other settings
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))

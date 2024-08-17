@@ -42,7 +42,7 @@ def get_available_categories():
                 SELECT DISTINCT business_category
                 FROM {}
                 ORDER BY business_category
-            """).format(sql.Identifier(MANUAL_TABLE_NAME)))
+            """).format(sql.Identifier(MANUAL_TABLE)))
             categories = [row[0] for row in cursor.fetchall()]
         return categories
     except psycopg.Error as e:
@@ -70,7 +70,7 @@ def execute_search_query(conn, cursor, question_vector, category, top_n, table_n
     query = get_search_query(INDEX_TYPE, table_name)
     cursor.execute(query, (question_vector, category, top_n))
     results = cursor.fetchall()
-    
+
     if len(results) < top_n:
         additional_query = sql.SQL("""
         SELECT file_name, document_page, page_text,
@@ -87,5 +87,5 @@ def execute_search_query(conn, cursor, question_vector, category, top_n, table_n
         cursor.execute(additional_query, (question_vector, category, top_n - len(results)))
         additional_results = cursor.fetchall()
         results.extend(additional_results)
-    
+
     return results[:top_n]
