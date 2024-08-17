@@ -1,5 +1,6 @@
 ## PDF_TABLE (PDF情報テーブル):
 - id (Primary Key): uuid, NOT NULL, UUIDバージョン4によるランダム値
+- full_path: varchar(1024), NOT NULL, PDFのフルパス
 - folder_name: varchar(1024), NOT NULL, PDFのフルパスからファイル名を除いたパス
 - file_name: varchar(1024), NOT NULL, PDFのファイル名
 - document_type: int2, NOT NULL, ドキュメントの種類 (1: manual, 2: faq)
@@ -15,7 +16,7 @@
 ## TOC_TABLE　（EXCEL目次情報テーブル）
 - id (Primary Key): uuid, NOT NULL, UUIDバージョン4によるランダム値
 - pdf_table_id (Foreign Key): uuid, NOT NULL, PDF_TABLEのidカラムを参照
-- toc_data: varchar(1024), NOT NULL, XLSXファイルの1シート分をテキスト化した内容
+- toc_data: text, NOT NULL, LSXファイルの1シート分を「","区切りのCSV形式」でテキスト化し、行単位で改行された内容
 - checksum: varchar(64), NOT NULL, XLSXファイルのSHA256ハッシュ値
 - created_date_time: timestamptz, レコード作成日時 (タイムゾーン付き)
 
@@ -42,6 +43,7 @@
 ```
 CREATE TABLE PDF_TABLE (
     id uuid PRIMARY KEY NOT NULL,
+    full_path varchar(1024) NOT NULL,
     folder_name varchar(1024) NOT NULL,
     file_name varchar(1024) NOT NULL,
     document_type int2 NOT NULL,
@@ -59,7 +61,7 @@ CREATE TABLE PDF_CATEGORY_TABLE (
 CREATE TABLE TOC_TABLE (
     id uuid PRIMARY KEY NOT NULL,
     pdf_table_id uuid NOT NULL REFERENCES PDF_TABLE(id),
-    toc_data varchar(1024) NOT NULL,
+    toc_data TEXT NOT NULL,
     checksum varchar(64) NOT NULL,
     created_date_time timestamptz
 );
