@@ -19,54 +19,56 @@
     - ef_construction: 256
     - ef_search: 500
     - これらの値はconfig.pyで設定されています。
-11. MANUAL_TABLEとFAQ_TABLEのpdf_table_idカラムにUNIQUE制約は指定されていません。
-12. PDF_CATEGORY_TABLEのpdf_table_idはUNIQUEであるべきではありません。
-13. TOC_TABLEはベクトル化しないため、HNSWインデックスは不要です。
-14. テーブル名はconfig.pyから読み込むことを想定しています。
+11. PDF_CATEGORY_TABLEのpdf_table_idはUNIQUEであるべきではありません。
+12. TOC_TABLEはベクトル化しないため、HNSWインデックスは不要です。
+13. テーブル名はconfig.pyから読み込みます。
+14. この構造では、1つのPDFファイルを複数のカテゴリに関連付けることができます。同時に、各カテゴリ内でのPDFの重複を防ぎ、カテゴリ別の類似検索を可能にします。
 
 ## PDF_TABLE (PDF情報テーブル):
 
 - id (Primary Key): uuid, NOT NULL, UUID v4によるランダム値
-- file_path: varchar(1024), NOT NULL, PDFのフルパス
-- file_name: varchar(1024), NOT NULL, PDFのファイル名
-- document_type: SMALLINT, NOT NULL, ドキュメントの種類 (1: manual, 2: faq)
-- checksum: varchar(64), NOT NULL, PDFのSHA256ハッシュ値
-- created_date_time: timestamp with time zone, NOT NULL, レコード作成日時
+- file_path: varchar(1024) NOT NULL, PDFのフルパス
+- file_name: varchar(1024) NOT NULL, PDFのファイル名
+- document_type: SMALLINT NOT NULL, ドキュメントの種類 (1: manual, 2: faq)
+- checksum: varchar(64) NOT NULL, PDFのSHA256ハッシュ値
+- created_date_time: timestamp with time zone NOT NULL, レコード作成日時
+- UNIQUE(file_path)
 
 ## PDF_CATEGORY_TABLE (PDFとカテゴリの関係テーブル):
 
-- id (Primary Key): uuid, NOT NULL, UUID v4によるランダム値
-- pdf_table_id (Foreign Key): uuid, NOT NULL, PDF_TABLEのidカラムを参照
-- business_category: SMALLINT, NOT NULL, 業務カテゴリ (1: 新契約, 2: 収納, 3: 保全, 4: 保険金, 5: 商品, 6: MSA ケア, 7: 手数料, 8: 代理店制度, 9: 職域推進, 10: 人事, 11: 会計)
-- created_date_time: timestamp with time zone, NOT NULL, レコード作成日時
+- id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
+- pdf_table_id (Foreign Key): uuid NOT NULL, PDF_TABLEのidカラムを参照
+- business_category: SMALLINT NOT NULL, 業務カテゴリ (1: 新契約, 2: 収納, 3: 保全, 4: 保険金, 5: 商品, 6: MSA ケア, 7: 手数料, 8: 代理店制度, 9: 職域推進, 10: 人事, 11: 会計)
+- created_date_time: timestamp with time zone NOT NULL, レコード作成日時
+- UNIQUE(pdf_table_id, business_category)
 
 ## TOC_TABLE (XLSX目次情報テーブル)
 
-- id (Primary Key): uuid, NOT NULL, UUID v4によるランダム値
-- pdf_table_id (Foreign Key): uuid, NOT NULL, PDF_TABLEのidカラムを参照
-- toc_data: text, NOT NULL, XLSXファイルの1シート分を「","区切りのCSV形式」でテキスト化し、行単位で改行された内容
-- checksum: varchar(64), NOT NULL, XLSXファイルのSHA256ハッシュ値
-- created_date_time: timestamp with time zone, NOT NULL, レコード作成日時
+- id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
+- pdf_table_id (Foreign Key): uuid NOT NULL, PDF_TABLEのidカラムを参照
+- toc_data: text NOT NULL, XLSXファイルの1シート分を「","区切りのCSV形式」でテキスト化し、行単位で改行された内容
+- checksum: varchar(64) NOT NULL, XLSXファイルのSHA256ハッシュ値
+- created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 
 ## MANUAL_TABLE (PDFマニュアル情報テーブル)
 
-- id (Primary Key): uuid, NOT NULL, UUID v4によるランダム値
-- pdf_table_id (Foreign Key): uuid, NOT NULL, PDF_TABLEのidカラムを参照
-- chunk_no: INTEGER, NOT NULL, PDFのテキストをページ毎かつCHUNK_SIZE毎に分割したチャンクの連番 (開始番号: 1)
-- document_page: SMALLINT, NOT NULL, チャンクの存在するPDFのページ番号 (開始番号: 1)
-- chunk_text: text, NOT NULL, チャンク毎のテキスト
-- embedding: vector(3072), NOT NULL, chunk_textのベクトルデータ
-- created_date_time: timestamp with time zone, NOT NULL, レコード作成日時
+- id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
+- pdf_table_id (Foreign Key): uuid NOT NULL, PDF_TABLEのidカラムを参照
+- chunk_no: INTEGER NOT NULL, PDFのテキストをページ毎かつCHUNK_SIZE毎に分割したチャンクの連番 (開始番号: 1)
+- document_page: SMALLINT NOT NULL, チャンクの存在するPDFのページ番号 (開始番号: 1)
+- chunk_text: text NOT NULL, チャンク毎のテキスト
+- embedding: vector(3072) NOT NULL, chunk_textのベクトルデータ
+- created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 
 ## FAQ_TABLE (PDFマニュアル情報テーブル)
 
-- id (Primary Key): uuid, NOT NULL, UUID v4によるランダム値
-- pdf_table_id (Foreign Key): uuid, NOT NULL, PDF_TABLEのidカラムを参照
-- document_page: INTEGER, NOT NULL, PDFのページ番号 (開始番号: 1)
-- faq_no: SMALLINT, NOT NULL, ページ毎のFAQ番号 (preprocess_faq_text関数が返却するfaq_noの数値)
-- page_text: text, NOT NULL, ページ毎のテキスト (preprocess_faq_text関数が返却するprocessed_textの文字列)
-- embedding: vector(3072), NOT NULL, page_textのベクトルデータ
-- created_date_time: timestamp with time zone, NOT NULL, レコード作成日時
+- id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
+- pdf_table_id (Foreign Key): uuid NOT NULL, PDF_TABLEのidカラムを参照
+- document_page: INTEGER NOT NULL, PDFのページ番号 (開始番号: 1)
+- faq_no: SMALLINT NOT NULL, ページ毎のFAQ番号 (preprocess_faq_text関数が返却するfaq_noの数値)
+- page_text: text NOT NULL, ページ毎のテキスト (preprocess_faq_text関数が返却するprocessed_textの文字列)
+- embedding: vector(3072) NOT NULL, page_textのベクトルデータ
+- created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 
 ## テーブル作成クエリ
 ### pgvector拡張機能のインストール
@@ -79,7 +81,8 @@ CREATE TABLE IF NOT EXISTS {PDF_TABLE} (
     file_name VARCHAR(1024) NOT NULL,
     document_type SMALLINT NOT NULL,
     checksum VARCHAR(64) NOT NULL,
-    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
+    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    UNIQUE(file_path)
 );
 
 ### PDF_CATEGORY_TABLE
@@ -87,7 +90,8 @@ CREATE TABLE IF NOT EXISTS {PDF_CATEGORY_TABLE} (
     id UUID PRIMARY KEY,
     pdf_table_id UUID NOT NULL REFERENCES {PDF_TABLE}(id),
     business_category SMALLINT NOT NULL,
-    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
+    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    UNIQUE(pdf_table_id, business_category)
 );
 
 ### TOC_TABLE
