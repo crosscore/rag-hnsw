@@ -84,10 +84,10 @@ def calculate_sha256(file_path):
 
 def preprocess_faq_text(text):
     faq_no_match = re.search(r'#(ID|No)\n(\d+)', text)
-    faq_no = int(faq_no_match.group(1)) if faq_no_match else None
+    faq_no = int(faq_no_match.group(2)) if faq_no_match else None
 
     processed_text_match = re.search(r'#質問・疑問\n(.*)', text, re.DOTALL)
-    processed_text = processed_text_match.group(0) if processed_text_match else text
+    processed_text = processed_text_match.group(1) if processed_text_match else text
 
     return faq_no, processed_text.strip()
 
@@ -109,7 +109,6 @@ def process_pdf(file_path, category, document_type):
 
     processed_data = []
     checksum = calculate_sha256(file_path)
-    total_chunks = 0
 
     for page in pages:
         page_text = page["page_content"]
@@ -118,15 +117,9 @@ def process_pdf(file_path, category, document_type):
         if page_text.strip():  # Only process non-empty pages
             if document_type == "faq":
                 faq_no, processed_text = preprocess_faq_text(page_text)
-            else:
-                faq_no, processed_text = None, page_text
-
-            chunks = split_text_into_chunks(processed_text)
-            for chunk in chunks:
-                total_chunks += 1
-                response = create_embedding(chunk)
+                response = create_embedding(processed_text)
                 if response is None:
-                    logger.warning(f"Failed to create embedding for chunk {total_chunks} on page {page_num}")
+                    logger.warning(f"Failed to create embedding for FAQ page {page_num}")
                     continue
 
                 current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
@@ -136,17 +129,37 @@ def process_pdf(file_path, category, document_type):
                     'checksum': checksum,
                     'business_category': category,
                     'document_type': document_type,
-                    'document_page': str(page_num),
-                    'chunk_no': total_chunks,
-                    'chunk_text': chunk,
+                    'document_page': int(page_num),
+                    'faq_no': faq_no,
+                    'page_text': processed_text,
                     'created_date_time': current_time,
                     'embedding': response.data[0].embedding
                 }
-                if faq_no is not None:
-                    data['faq_no'] = faq_no
                 processed_data.append(data)
+            else:  # manual
+                chunks = split_text_into_chunks(page_text)
+                for chunk_no, chunk in enumerate(chunks, start=1):
+                    response = create_embedding(chunk)
+                    if response is None:
+                        logger.warning(f"Failed to create embedding for chunk {chunk_no} on page {page_num}")
+                        continue
 
-    logger.info(f"Processed {file_path}: {len(pages)} pages, {total_chunks} chunks")
+                    current_time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
+                    data = {
+                        'file_name': os.path.basename(file_path),
+                        'file_path': file_path,
+                        'checksum': checksum,
+                        'business_category': category,
+                        'document_type': document_type,
+                        'document_page': int(page_num),
+                        'chunk_no': chunk_no,
+                        'chunk_text': chunk,
+                        'created_date_time': current_time,
+                        'embedding': response.data[0].embedding
+                    }
+                    processed_data.append(data)
+
+    logger.info(f"Processed {file_path}: {len(pages)} pages, {len(processed_data)} total entries")
     return pd.DataFrame(processed_data)
 
 def process_pdf_files(input_dir, output_dir, document_type):

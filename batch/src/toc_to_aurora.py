@@ -1,65 +1,20 @@
 # rag-hnsw/batch/src/toc_to_aurora.py
 import os
 import pandas as pd
-import psycopg
 from psycopg import sql
-from config import *
 import logging
-from contextlib import contextmanager
+import uuid
+import hashlib
 from datetime import datetime
 import pytz
-import hashlib
+from utils import get_db_connection, create_tables, get_table_count
+from config import *
 
 log_dir = os.path.join(DATA_DIR, "log")
 os.makedirs(log_dir, exist_ok=True)
 logging.basicConfig(filename=os.path.join(log_dir, "toc_to_aurora.log"), level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-@contextmanager
-def get_db_connection():
-    conn = None
-    try:
-        conn = psycopg.connect(
-            dbname=POSTGRES_DB,
-            user=POSTGRES_USER,
-            password=POSTGRES_PASSWORD,
-            host=POSTGRES_HOST,
-            port=POSTGRES_PORT
-        )
-        logger.info(f"Connected to database: {POSTGRES_HOST}:{POSTGRES_PORT}")
-        yield conn
-    except Exception as e:
-        logger.error(f"Database connection error: {e}")
-        raise
-    finally:
-        if conn:
-            conn.close()
-            logger.info("Database connection closed")
-
-def create_toc_table(cursor):
-    create_table_query = sql.SQL("""
-    CREATE TABLE IF NOT EXISTS {} (
-        id SERIAL PRIMARY KEY,
-        file_path TEXT,
-        toc_data TEXT,
-        checksum TEXT,
-        created_date_time TIMESTAMPTZ
-    );
-    """).format(sql.Identifier(TOC_TABLE))
-
-    try:
-        cursor.execute(create_table_query)
-        logger.info(f"Table {TOC_TABLE} creation query executed")
-
-        cursor.execute(sql.SQL("SELECT to_regclass({})").format(sql.Literal(TOC_TABLE)))
-        if cursor.fetchone()[0]:
-            logger.info(f"Confirmed: Table {TOC_TABLE} exists")
-        else:
-            raise Exception(f"Failed to create table {TOC_TABLE}")
-    except psycopg.Error as e:
-        logger.error(f"Error creating table {TOC_TABLE}: {e}")
-        raise
 
 def process_xlsx_file(file_path, cursor):
     logger.info(f"Processing XLSX file: {file_path}")
@@ -80,16 +35,56 @@ def process_xlsx_file(file_path, cursor):
     tokyo_tz = pytz.timezone('Asia/Tokyo')
     created_date_time = datetime.now(tokyo_tz)
 
-    insert_query = sql.SQL("""
-    INSERT INTO {} (file_path, toc_data, checksum, created_date_time)
-    VALUES (%s, %s, %s, %s);
-    """).format(sql.Identifier(TOC_TABLE))
+    # Extract file name and folder name
+    file_name = os.path.basename(file_path)
+    folder_name = os.path.dirname(file_path)
+
+    # Insert into PDF_TABLE first
+    pdf_table_id = uuid.uuid4()
+    insert_pdf_query = sql.SQL("""
+    INSERT INTO {}
+    (id, file_path, folder_name, file_name, document_type, checksum, created_date_time)
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    RETURNING id;
+    """).format(sql.Identifier(PDF_TABLE))
+
+    pdf_data = (
+        pdf_table_id,
+        file_path,
+        folder_name,
+        file_name,
+        1,  # Assuming 1 is the document_type for manual
+        checksum,
+        created_date_time
+    )
 
     try:
-        cursor.execute(insert_query, (file_path, toc_data, checksum, created_date_time))
-        logger.info(f"Inserted data from {file_path} into the {TOC_TABLE} table")
+        cursor.execute(insert_pdf_query, pdf_data)
+        logger.info(f"Inserted PDF data into {PDF_TABLE}")
     except Exception as e:
-        logger.error(f"Error inserting data into {TOC_TABLE} from {file_path}: {e}")
+        logger.error(f"Error inserting PDF data into {PDF_TABLE}: {e}")
+        raise
+
+    # Insert into TOC_TABLE
+    insert_toc_query = sql.SQL("""
+    INSERT INTO {}
+    (id, pdf_table_id, toc_data, checksum, created_date_time)
+    VALUES (%s, %s, %s, %s, %s);
+    """).format(sql.Identifier(TOC_TABLE))
+
+    toc_data = (
+        uuid.uuid4(),
+        pdf_table_id,
+        toc_data,
+        checksum,
+        created_date_time
+    )
+
+    try:
+        cursor.execute(insert_toc_query, toc_data)
+        logger.info(f"Inserted TOC data into {TOC_TABLE}")
+    except Exception as e:
+        logger.error(f"Error inserting TOC data into {TOC_TABLE}: {e}")
         raise
 
 def process_toc_files():
@@ -98,9 +93,9 @@ def process_toc_files():
             with conn.cursor() as cursor:
                 conn.autocommit = False
                 try:
-                    create_toc_table(cursor)
+                    create_tables(cursor)
                     conn.commit()
-                    logger.info("TOC table created successfully")
+                    logger.info("Tables created successfully")
 
                     xlsx_files = []
                     for root, _, files in os.walk(TOC_XLSX_DIR):
@@ -113,13 +108,13 @@ def process_toc_files():
                     for xlsx_file in xlsx_files:
                         try:
                             process_xlsx_file(xlsx_file, cursor)
+                            conn.commit()
                             logger.info(f"Successfully processed {xlsx_file}")
                         except Exception as e:
-                            logger.error(f"Error processing {xlsx_file}: {e}")
                             conn.rollback()
+                            logger.error(f"Error processing {xlsx_file}: {e}")
                             continue
 
-                    conn.commit()
                     logger.info("All XLSX files have been processed and inserted into the database.")
 
                 except Exception as e:
@@ -127,9 +122,8 @@ def process_toc_files():
                     logger.error(f"Transaction rolled back due to error: {e}")
                     raise
 
-                cursor.execute(sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(TOC_TABLE)))
-                count = cursor.fetchone()[0]
-                logger.info(f"Total records in {TOC_TABLE}: {count}")
+                for table_name in [PDF_TABLE, TOC_TABLE]:
+                    get_table_count(cursor, table_name)
 
     except Exception as e:
         logger.error(f"An error occurred during processing: {e}", exc_info=True)
