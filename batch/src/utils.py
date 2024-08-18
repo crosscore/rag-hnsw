@@ -39,7 +39,6 @@ def get_db_connection():
 
 def create_table(cursor, table_name, create_query):
     try:
-        # create_queryは既にフォーマット済みのSQL文字列なので、直接実行します
         cursor.execute(create_query)
         logger.info(f"Table {table_name} creation query executed")
     except psycopg.Error as e:
