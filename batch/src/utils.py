@@ -4,6 +4,10 @@ import logging
 from contextlib import contextmanager
 import psycopg
 from psycopg import sql
+import uuid
+import pytz
+from datetime import datetime
+import hashlib
 from config import *
 
 log_dir = os.path.join(DATA_DIR, "log")
@@ -132,3 +136,72 @@ def get_table_count(cursor, table_name):
     count = cursor.fetchone()[0]
     logger.info(f"Total records in {table_name}: {count}")
     return count
+
+def process_file_common(cursor, file_path, file_name, document_type, checksum, created_date_time, business_category):
+    # Insert into PDF_TABLE first
+    insert_pdf_query = sql.SQL("""
+    INSERT INTO {}
+    (id, file_path, file_name, document_type, checksum, created_date_time)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    ON CONFLICT (file_path) DO UPDATE SET
+    file_name = EXCLUDED.file_name,
+    document_type = EXCLUDED.document_type,
+    checksum = EXCLUDED.checksum,
+    created_date_time = EXCLUDED.created_date_time
+    RETURNING id;
+    """).format(sql.Identifier(PDF_TABLE))
+
+    pdf_data = (
+        uuid.uuid4(),
+        file_path,
+        file_name,
+        document_type,
+        checksum,
+        created_date_time
+    )
+
+    try:
+        cursor.execute(insert_pdf_query, pdf_data)
+        pdf_table_id = cursor.fetchone()[0]
+        logger.info(f"Inserted/Updated PDF data in {PDF_TABLE}")
+    except Exception as e:
+        logger.error(f"Error inserting/updating PDF data in {PDF_TABLE}: {e}")
+        raise
+
+    # Insert into PDF_CATEGORY_TABLE
+    insert_category_query = sql.SQL("""
+    INSERT INTO {}
+    (id, pdf_table_id, business_category, created_date_time)
+    VALUES (%s, %s, %s, %s)
+    ON CONFLICT (pdf_table_id, business_category) DO NOTHING;
+    """).format(sql.Identifier(PDF_CATEGORY_TABLE))
+
+    category_data = (
+        uuid.uuid4(),
+        pdf_table_id,
+        business_category,
+        created_date_time
+    )
+
+    try:
+        cursor.execute(insert_category_query, category_data)
+        logger.info(f"Inserted category data into {PDF_CATEGORY_TABLE}")
+    except Exception as e:
+        logger.error(f"Error inserting category data into {PDF_CATEGORY_TABLE}: {e}")
+        raise
+
+    return pdf_table_id
+
+def calculate_checksum(file_path):
+    return hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
+
+def get_current_datetime():
+    tokyo_tz = pytz.timezone('Asia/Tokyo')
+    return datetime.now(tokyo_tz)
+
+def get_file_name(file_path):
+    return os.path.splitext(os.path.basename(file_path))[0]
+
+def get_business_category(file_path, base_dir):
+    relative_path = os.path.relpath(os.path.dirname(file_path), base_dir)
+    return int(relative_path.split(os.path.sep)[0])

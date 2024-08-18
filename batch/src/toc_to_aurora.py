@@ -4,10 +4,7 @@ import pandas as pd
 from psycopg import sql
 import logging
 import uuid
-import hashlib
-from datetime import datetime
-import pytz
-from utils import get_db_connection, create_tables, get_table_count
+from utils import get_db_connection, create_tables, get_table_count, process_file_common, calculate_checksum, get_current_datetime, get_file_name, get_business_category
 from config import *
 
 log_dir = os.path.join(DATA_DIR, "log")
@@ -28,37 +25,13 @@ def process_xlsx_file(file_path, cursor):
     # Convert DataFrame to CSV string
     toc_data = df.to_csv(index=False)
 
-    # Calculate SHA256 hash of the file
-    checksum = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
+    file_name = get_file_name(file_path)
+    checksum = calculate_checksum(file_path)
+    created_date_time = get_current_datetime()
+    business_category = get_business_category(file_path, TOC_XLSX_DIR)
 
-    # Get current datetime in Tokyo timezone
-    tokyo_tz = pytz.timezone('Asia/Tokyo')
-    created_date_time = datetime.now(tokyo_tz)
-
-    # Extract file name without extension
-    file_name = os.path.splitext(os.path.basename(file_path))[0]
-
-    # Get the relative path for business_category
-    relative_path = os.path.relpath(os.path.dirname(file_path), TOC_XLSX_DIR)
-    business_category = int(relative_path.split(os.path.sep)[0])
-
-    # Check if a corresponding PDF exists in PDF_TABLE
-    check_pdf_query = sql.SQL("""
-    SELECT id FROM {}
-    WHERE file_name = %s AND id IN (
-        SELECT pdf_table_id FROM {} WHERE business_category = %s
-    )
-    """).format(sql.Identifier(PDF_TABLE), sql.Identifier(PDF_CATEGORY_TABLE))
-
-    cursor.execute(check_pdf_query, (file_name, business_category))
-    existing_pdf = cursor.fetchone()
-
-    if existing_pdf:
-        pdf_table_id = existing_pdf[0]
-        logger.info(f"Found corresponding PDF in {PDF_TABLE}")
-    else:
-        logger.warning(f"No corresponding PDF found for XLSX file: {file_name}")
-        return
+    # Use the common function to process PDF_TABLE and PDF_CATEGORY_TABLE
+    pdf_table_id = process_file_common(cursor, file_path, file_name, 3, checksum, created_date_time, business_category)
 
     # Insert into XLSX_TOC_TABLE
     insert_toc_query = sql.SQL("""

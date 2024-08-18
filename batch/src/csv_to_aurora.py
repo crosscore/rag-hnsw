@@ -4,7 +4,7 @@ import pandas as pd
 from psycopg import sql
 import logging
 import uuid
-from utils import get_db_connection, create_tables, create_index, get_table_count
+from utils import get_db_connection, create_tables, create_index, get_table_count, process_file_common, calculate_checksum, get_current_datetime, get_file_name, get_business_category
 from config import *
 
 log_dir = os.path.join(DATA_DIR, "log")
@@ -22,58 +22,12 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         logger.error(f"Error reading CSV file {file_path}: {e}")
         return
 
-    # Insert into PDF_TABLE first
-    insert_pdf_query = sql.SQL("""
-    INSERT INTO {}
-    (id, file_path, file_name, document_type, checksum, created_date_time)
-    VALUES (%s, %s, %s, %s, %s, %s)
-    ON CONFLICT (file_path) DO UPDATE SET
-    file_name = EXCLUDED.file_name,
-    document_type = EXCLUDED.document_type,
-    checksum = EXCLUDED.checksum,
-    created_date_time = EXCLUDED.created_date_time
-    RETURNING id;
-    """).format(sql.Identifier(PDF_TABLE))
+    file_name = get_file_name(file_path)
+    checksum = calculate_checksum(file_path)
+    created_date_time = get_current_datetime()
+    business_category = get_business_category(file_path, CSV_MANUAL_DIR if document_type == 'manual' else CSV_FAQ_DIR)
 
-    file_name = os.path.splitext(os.path.basename(df['file_path'].iloc[0]))[0]  # Remove extension
-    pdf_data = (
-        uuid.uuid4(),
-        df['file_path'].iloc[0],
-        file_name,
-        1 if document_type == 'manual' else 2,
-        df['checksum'].iloc[0],
-        df['created_date_time'].iloc[0]
-    )
-
-    try:
-        cursor.execute(insert_pdf_query, pdf_data)
-        pdf_table_id = cursor.fetchone()[0]
-        logger.info(f"Inserted/Updated PDF data in {PDF_TABLE}")
-    except Exception as e:
-        logger.error(f"Error inserting/updating PDF data in {PDF_TABLE}: {e}")
-        raise
-
-    # Insert into PDF_CATEGORY_TABLE
-    insert_category_query = sql.SQL("""
-    INSERT INTO {}
-    (id, pdf_table_id, business_category, created_date_time)
-    VALUES (%s, %s, %s, %s)
-    ON CONFLICT (pdf_table_id, business_category) DO NOTHING;
-    """).format(sql.Identifier(PDF_CATEGORY_TABLE))
-
-    category_data = (
-        uuid.uuid4(),
-        pdf_table_id,
-        int(df['business_category'].iloc[0]),
-        df['created_date_time'].iloc[0]
-    )
-
-    try:
-        cursor.execute(insert_category_query, category_data)
-        logger.info(f"Inserted category data into {PDF_CATEGORY_TABLE}")
-    except Exception as e:
-        logger.error(f"Error inserting category data into {PDF_CATEGORY_TABLE}: {e}")
-        raise
+    pdf_table_id = process_file_common(cursor, df['file_path'].iloc[0], file_name, 1 if document_type == 'manual' else 2, checksum, created_date_time, business_category)
 
     # Insert into PDF_MANUAL_TABLE or PDF_FAQ_TABLE
     if table_name == PDF_MANUAL_TABLE:
