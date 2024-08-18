@@ -9,7 +9,7 @@ from langchain_text_splitters import CharacterTextSplitter
 from utils import calculate_checksum, get_current_datetime, get_file_name, get_business_category, setup_logging
 from config import *
 
-logger = setup_logging("vectorizer.log")
+logger = setup_logging("vectorizer")
 
 def initialize_openai_client():
     if ENABLE_OPENAI:

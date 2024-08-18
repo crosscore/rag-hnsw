@@ -6,7 +6,7 @@ import uuid
 from utils import get_db_connection, create_tables, create_index, get_table_count, process_file_common, calculate_checksum, get_current_datetime, get_file_name, get_business_category, setup_logging
 from config import *
 
-logger = setup_logging("csv_to_aurora.log")
+logger = setup_logging("csv_to_aurora")
 
 def process_csv_file(file_path, cursor, table_name, document_type):
     logger.info(f"Processing CSV file: {file_path}")

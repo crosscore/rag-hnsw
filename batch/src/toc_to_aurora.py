@@ -6,7 +6,7 @@ import uuid
 from utils import get_db_connection, create_tables, get_table_count, process_file_common, calculate_checksum, get_current_datetime, get_file_name, get_business_category, setup_logging
 from config import *
 
-logger = setup_logging("toc_to_aurora.log")
+logger = setup_logging("toc_to_aurora")
 
 def process_xlsx_file(file_path, cursor):
     logger.info(f"Processing XLSX file: {file_path}")
