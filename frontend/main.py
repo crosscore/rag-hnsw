@@ -102,7 +102,7 @@ async def forward_to_client(client_ws: WebSocket, backend_ws: websockets.WebSock
         while True:
             response = await backend_ws.recv()
             response_data = json.loads(response)
-            
+
             if "manual_results" in response_data:
                 await client_ws.send_json({"manual_results": response_data["manual_results"]})
             elif "faq_results" in response_data:

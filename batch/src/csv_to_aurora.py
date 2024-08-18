@@ -22,19 +22,19 @@ def process_csv_file(file_path, cursor, table_name, document_type):
     created_date_time = get_current_datetime()
     business_category = get_business_category(file_path, CSV_MANUAL_DIR if document_type == 'manual' else CSV_FAQ_DIR)
 
-    pdf_table_id = process_file_common(cursor, df['file_path'].iloc[0], file_name, 1 if document_type == 'manual' else 2, checksum, created_date_time, business_category)
+    document_table_id = process_file_common(cursor, df['file_path'].iloc[0], file_name, DOCUMENT_TYPE_PDF_MANUAL if document_type == 'manual' else DOCUMENT_TYPE_PDF_FAQ, checksum, created_date_time, business_category)
 
     # Insert into PDF_MANUAL_TABLE or PDF_FAQ_TABLE
     if table_name == PDF_MANUAL_TABLE:
         insert_query = sql.SQL("""
         INSERT INTO {}
-        (id, pdf_table_id, chunk_no, document_page, chunk_text, embedding, created_date_time)
+        (id, document_table_id, chunk_no, document_page, chunk_text, embedding, created_date_time)
         VALUES (%s, %s, %s, %s, %s, %s::vector(3072), %s);
         """).format(sql.Identifier(table_name))
     else:  # PDF_FAQ_TABLE
         insert_query = sql.SQL("""
         INSERT INTO {}
-        (id, pdf_table_id, document_page, faq_no, page_text, embedding, created_date_time)
+        (id, document_table_id, document_page, faq_no, page_text, embedding, created_date_time)
         VALUES (%s, %s, %s, %s, %s, %s::vector(3072), %s);
         """).format(sql.Identifier(table_name))
 
@@ -50,7 +50,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         if table_name == PDF_MANUAL_TABLE:
             row_data = (
                 uuid.uuid4(),
-                pdf_table_id,
+                document_table_id,
                 row['chunk_no'],
                 row['document_page'],
                 row['chunk_text'],
@@ -60,7 +60,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         else:  # PDF_FAQ_TABLE
             row_data = (
                 uuid.uuid4(),
-                pdf_table_id,
+                document_table_id,
                 row['document_page'],
                 row['faq_no'],
                 row['page_text'],
@@ -114,7 +114,7 @@ def process_csv_files():
                     logger.error(f"Transaction rolled back due to error: {e}")
                     raise
 
-                for table_name in [PDF_TABLE, PDF_CATEGORY_TABLE, PDF_MANUAL_TABLE, PDF_FAQ_TABLE]:
+                for table_name in [DOCUMENT_TABLE, DOCUMENT_CATEGORY_TABLE, PDF_MANUAL_TABLE, PDF_FAQ_TABLE]:
                     get_table_count(cursor, table_name)
 
     except Exception as e:

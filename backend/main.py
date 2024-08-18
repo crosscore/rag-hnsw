@@ -72,8 +72,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     ).data[0].embedding
 
                 with get_db_connection() as (conn, cursor):
-                    manual_results = execute_search_query(conn, cursor, question_vector, category, top_n, MANUAL_TABLE)
-                    faq_results = execute_search_query(conn, cursor, question_vector, category, top_n, FAQ_TABLE)
+                    manual_results = execute_search_query(conn, cursor, question_vector, category, top_n, PDF_MANUAL_TABLE)
+                    faq_results = execute_search_query(conn, cursor, question_vector, category, top_n, PDF_FAQ_TABLE)
 
                     conn.commit()
 
@@ -83,31 +83,45 @@ async def websocket_endpoint(websocket: WebSocket):
                 faq_texts = []
 
                 for result in manual_results:
-                    file_name, document_page, page_text, document_type, distance = result
+                    document_table_id, chunk_no, document_page, chunk_text, distance = result
+                    # Fetch additional information from DOCUMENT_TABLE
+                    cursor.execute("""
+                        SELECT file_path, file_name FROM {} WHERE id = %s
+                    """.format(DOCUMENT_TABLE), (document_table_id,))
+                    doc_info = cursor.fetchone()
+                    file_path, file_name = doc_info if doc_info else (None, None)
+
                     formatted_result = {
                         "file_name": str(file_name),
                         "page": int(document_page),
-                        "page_text": str(page_text),
+                        "chunk_text": str(chunk_text),
                         "distance": float(distance),
                         "category": category,
-                        "document_type": str(document_type),
-                        "link_text": f"/{document_type}/{category}/{os.path.basename(file_name)}, p.{document_page}",
-                        "link": f"pdf/{document_type}/{category}/{os.path.basename(file_name)}?page={document_page}",
+                        "document_type": "manual",
+                        "link_text": f"/manual/{category}/{os.path.basename(file_name)}, p.{document_page}",
+                        "link": f"pdf/manual/{category}/{os.path.basename(file_name)}?page={document_page}",
                     }
                     formatted_manual_results.append(formatted_result)
-                    manual_texts.append(page_text)
+                    manual_texts.append(chunk_text)
 
                 for result in faq_results:
-                    file_name, document_page, page_text, document_type, distance = result
+                    document_table_id, document_page, faq_no, page_text, distance = result
+                    # Fetch additional information from DOCUMENT_TABLE
+                    cursor.execute("""
+                        SELECT file_path, file_name FROM {} WHERE id = %s
+                    """.format(DOCUMENT_TABLE), (document_table_id,))
+                    doc_info = cursor.fetchone()
+                    file_path, file_name = doc_info if doc_info else (None, None)
+
                     formatted_result = {
                         "file_name": str(file_name),
                         "page": int(document_page),
                         "page_text": str(page_text),
                         "distance": float(distance),
                         "category": category,
-                        "document_type": str(document_type),
-                        "link_text": f"/{document_type}/{category}/{os.path.basename(file_name)}, p.{document_page}",
-                        "link": f"pdf/{document_type}/{category}/{os.path.basename(file_name)}?page={document_page}",
+                        "document_type": "faq",
+                        "link_text": f"/faq/{category}/{os.path.basename(file_name)}, p.{document_page}",
+                        "link": f"pdf/faq/{category}/{os.path.basename(file_name)}?page={document_page}",
                     }
                     formatted_faq_results.append(formatted_result)
                     faq_texts.append(page_text)

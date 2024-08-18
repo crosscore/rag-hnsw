@@ -42,7 +42,7 @@ def get_available_categories():
                 SELECT DISTINCT business_category
                 FROM {}
                 ORDER BY business_category
-            """).format(sql.Identifier(MANUAL_TABLE)))
+            """).format(sql.Identifier(DOCUMENT_CATEGORY_TABLE)))
             categories = [row[0] for row in cursor.fetchall()]
         return categories
     except psycopg.Error as e:
@@ -53,16 +53,18 @@ def get_search_query(index_type, table_name):
     vector_type = "halfvec(3072)" if index_type == "hnsw" else "vector(3072)"
     operator = "<#>"
     query = sql.SQL("""
-    SELECT file_name, document_page, page_text,
-            (embedding::{vector_type} {operator} %s::{vector_type}) AS distance
-    FROM {table}
-    WHERE business_category = %s
+    SELECT t.document_table_id, t.chunk_no, t.document_page, t.chunk_text,
+            (t.embedding::{vector_type} {operator} %s::{vector_type}) AS distance
+    FROM {table} t
+    JOIN {document_category_table} c ON t.document_table_id = c.document_table_id
+    WHERE c.business_category = %s
     ORDER BY distance ASC
     LIMIT %s;
     """).format(
         vector_type=sql.SQL(vector_type),
         operator=sql.SQL(operator),
-        table=sql.Identifier(table_name)
+        table=sql.Identifier(table_name),
+        document_category_table=sql.Identifier(DOCUMENT_CATEGORY_TABLE)
     )
     return query
 
@@ -73,16 +75,18 @@ def execute_search_query(conn, cursor, question_vector, category, top_n, table_n
 
     if len(results) < top_n:
         additional_query = sql.SQL("""
-        SELECT file_name, document_page, page_text,
-                (embedding::{vector_type} {operator} %s::{vector_type}) AS distance
-        FROM {table}
-        WHERE business_category != %s
+        SELECT t.document_table_id, t.chunk_no, t.document_page, t.chunk_text,
+                (t.embedding::{vector_type} {operator} %s::{vector_type}) AS distance
+        FROM {table} t
+        JOIN {document_category_table} c ON t.document_table_id = c.document_table_id
+        WHERE c.business_category != %s
         ORDER BY distance ASC
         LIMIT %s;
         """).format(
             vector_type=sql.SQL("halfvec(3072)" if INDEX_TYPE == "hnsw" else "vector(3072)"),
             operator=sql.SQL("<#>"),
-            table=sql.Identifier(table_name)
+            table=sql.Identifier(table_name),
+            document_category_table=sql.Identifier(DOCUMENT_CATEGORY_TABLE)
         )
         cursor.execute(additional_query, (question_vector, category, top_n - len(results)))
         additional_results = cursor.fetchall()

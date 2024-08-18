@@ -70,7 +70,7 @@ def create_tables(cursor):
         raise
 
     tables = [
-        (PDF_TABLE, """
+        (DOCUMENT_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
             file_path VARCHAR(1024) NOT NULL,
@@ -81,19 +81,19 @@ def create_tables(cursor):
             UNIQUE(file_path)
         )
         """),
-        (PDF_CATEGORY_TABLE, """
+        (DOCUMENT_CATEGORY_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
-            pdf_table_id UUID NOT NULL REFERENCES {}(id),
+            document_table_id UUID NOT NULL REFERENCES {}(id),
             business_category SMALLINT NOT NULL,
             created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-            UNIQUE(pdf_table_id, business_category)
+            UNIQUE(document_table_id, business_category)
         )
         """),
         (PDF_MANUAL_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
-            pdf_table_id UUID NOT NULL REFERENCES {}(id),
+            document_table_id UUID NOT NULL REFERENCES {}(id),
             chunk_no INTEGER NOT NULL,
             document_page SMALLINT NOT NULL,
             chunk_text TEXT NOT NULL,
@@ -104,7 +104,7 @@ def create_tables(cursor):
         (PDF_FAQ_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
-            pdf_table_id UUID NOT NULL REFERENCES {}(id),
+            document_table_id UUID NOT NULL REFERENCES {}(id),
             document_page INTEGER NOT NULL,
             faq_no SMALLINT NOT NULL,
             page_text TEXT NOT NULL,
@@ -115,12 +115,12 @@ def create_tables(cursor):
         (XLSX_TOC_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
-            pdf_table_id UUID NOT NULL REFERENCES {}(id),
+            document_table_id UUID NOT NULL REFERENCES {}(id),
             file_name VARCHAR(1024) NOT NULL,
             toc_data TEXT NOT NULL,
             checksum VARCHAR(64) NOT NULL,
             created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-            UNIQUE(pdf_table_id, file_name)
+            UNIQUE(document_table_id, file_name)
         )
         """)
     ]
@@ -128,7 +128,7 @@ def create_tables(cursor):
     for table_name, create_query in tables:
         formatted_query = sql.SQL(create_query).format(
             sql.Identifier(table_name),
-            sql.Identifier(PDF_TABLE)
+            sql.Identifier(DOCUMENT_TABLE)
         )
         create_table(cursor, table_name, formatted_query)
 
@@ -158,7 +158,7 @@ def get_table_count(cursor, table_name):
     return count
 
 def process_file_common(cursor, file_path, file_name, document_type, checksum, created_date_time, business_category):
-    # Insert into PDF_TABLE first
+    # Insert into DOCUMENT_TABLE first
     insert_pdf_query = sql.SQL("""
     INSERT INTO {}
     (id, file_path, file_name, document_type, checksum, created_date_time)
@@ -169,7 +169,7 @@ def process_file_common(cursor, file_path, file_name, document_type, checksum, c
     checksum = EXCLUDED.checksum,
     created_date_time = EXCLUDED.created_date_time
     RETURNING id;
-    """).format(sql.Identifier(PDF_TABLE))
+    """).format(sql.Identifier(DOCUMENT_TABLE))
 
     pdf_data = (
         uuid.uuid4(),
@@ -182,35 +182,35 @@ def process_file_common(cursor, file_path, file_name, document_type, checksum, c
 
     try:
         cursor.execute(insert_pdf_query, pdf_data)
-        pdf_table_id = cursor.fetchone()[0]
-        logger.info(f"Inserted/Updated PDF data in {PDF_TABLE}")
+        document_table_id = cursor.fetchone()[0]
+        logger.info(f"Inserted/Updated DOCUMENT data in {DOCUMENT_TABLE}")
     except Exception as e:
-        logger.error(f"Error inserting/updating PDF data in {PDF_TABLE}: {e}")
+        logger.error(f"Error inserting/updating DOCUMENT data in {DOCUMENT_TABLE}: {e}")
         raise
 
-    # Insert into PDF_CATEGORY_TABLE
+    # Insert into DOCUMENT_CATEGORY_TABLE
     insert_category_query = sql.SQL("""
     INSERT INTO {}
-    (id, pdf_table_id, business_category, created_date_time)
+    (id, document_table_id, business_category, created_date_time)
     VALUES (%s, %s, %s, %s)
-    ON CONFLICT (pdf_table_id, business_category) DO NOTHING;
-    """).format(sql.Identifier(PDF_CATEGORY_TABLE))
+    ON CONFLICT (document_table_id, business_category) DO NOTHING;
+    """).format(sql.Identifier(DOCUMENT_CATEGORY_TABLE))
 
     category_data = (
         uuid.uuid4(),
-        pdf_table_id,
+        document_table_id,
         business_category,
         created_date_time
     )
 
     try:
         cursor.execute(insert_category_query, category_data)
-        logger.info(f"Inserted category data into {PDF_CATEGORY_TABLE}")
+        logger.info(f"Inserted category data into {DOCUMENT_CATEGORY_TABLE}")
     except Exception as e:
-        logger.error(f"Error inserting category data into {PDF_CATEGORY_TABLE}: {e}")
+        logger.error(f"Error inserting category data into {DOCUMENT_CATEGORY_TABLE}: {e}")
         raise
 
-    return pdf_table_id
+    return document_table_id
 
 def calculate_checksum(file_path):
     return hashlib.sha256(open(file_path, 'rb').read()).hexdigest()

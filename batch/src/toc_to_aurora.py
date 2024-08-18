@@ -25,15 +25,15 @@ def process_xlsx_file(file_path, cursor):
     created_date_time = get_current_datetime()
     business_category = get_business_category(file_path, TOC_XLSX_DIR)
 
-    # Use the common function to process PDF_TABLE and PDF_CATEGORY_TABLE
-    pdf_table_id = process_file_common(cursor, file_path, file_name, 3, checksum, created_date_time, business_category)
+    # Use the common function to process DOCUMENT_TABLE and DOCUMENT_CATEGORY_TABLE
+    document_table_id = process_file_common(cursor, file_path, file_name, DOCUMENT_TYPE_XLSX_TOC, checksum, created_date_time, business_category)
 
     # Insert into XLSX_TOC_TABLE
     insert_toc_query = sql.SQL("""
     INSERT INTO {}
-    (id, pdf_table_id, file_name, toc_data, checksum, created_date_time)
+    (id, document_table_id, file_name, toc_data, checksum, created_date_time)
     VALUES (%s, %s, %s, %s, %s, %s)
-    ON CONFLICT (pdf_table_id, file_name) DO UPDATE SET
+    ON CONFLICT (document_table_id, file_name) DO UPDATE SET
     toc_data = EXCLUDED.toc_data,
     checksum = EXCLUDED.checksum,
     created_date_time = EXCLUDED.created_date_time;
@@ -41,7 +41,7 @@ def process_xlsx_file(file_path, cursor):
 
     toc_data = (
         uuid.uuid4(),
-        pdf_table_id,
+        document_table_id,
         file_name,
         toc_data,
         checksum,
@@ -90,7 +90,7 @@ def process_toc_files():
                     logger.error(f"Transaction rolled back due to error: {e}")
                     raise
 
-                for table_name in [PDF_TABLE, XLSX_TOC_TABLE]:
+                for table_name in [DOCUMENT_TABLE, XLSX_TOC_TABLE]:
                     get_table_count(cursor, table_name)
 
     except Exception as e:

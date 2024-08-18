@@ -28,6 +28,11 @@ DEAD_LETTER_QUEUE_URL=os.getenv("DEAD_LETTER_QUEUE_URL")
 LOCAL_UPLOAD_PATH = os.getenv("LOCAL_UPLOAD_PATH")
 LOCAL_DOWNLOAD_PATH = os.getenv("LOCAL_DOWNLOAD_PATH")
 
+# CharacterTextSplitter settings
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 1000))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 0))
+SEPARATOR = os.getenv("SEPARATOR", "\n\n")
+
 # Base directories
 DATA_DIR = os.getenv("DATA_DIR", "/app/data")
 PDF_INPUT_DIR = os.path.join(DATA_DIR, "pdf")
@@ -56,9 +61,16 @@ HNSW_EF_CONSTRUCTION = HNSW_SETTINGS.get("ef_construction", 256)
 HNSW_EF_SEARCH = HNSW_SETTINGS.get("ef_search", 500)
 
 # PostgreSQL table settings
-MANUAL_TABLE = os.getenv("MANUAL_TABLE", "manual_embeddings")
-FAQ_TABLE = os.getenv("FAQ_TABLE", "faq_embeddings")
-TOC_TABLE = "toc_table"
+DOCUMENT_TABLE = os.getenv("DOCUMENT_TABLE", "document_table")
+DOCUMENT_CATEGORY_TABLE = os.getenv("DOCUMENT_CATEGORY_TABLE","document_category_table")
+XLSX_TOC_TABLE = os.getenv("XLSX_TOC_TABLE", "xlsx_toc_table")
+PDF_MANUAL_TABLE = os.getenv("PDF_MANUAL_TABLE", "pdf_manual_table")
+PDF_FAQ_TABLE = os.getenv("PDF_FAQ_TABLE", "pdf_faq_table")
+
+# Document types
+DOCUMENT_TYPE_PDF_MANUAL = 1
+DOCUMENT_TYPE_PDF_FAQ = 2
+DOCUMENT_TYPE_XLSX_TOC = 3
 
 # Other settings
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
