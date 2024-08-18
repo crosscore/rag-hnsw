@@ -39,7 +39,8 @@ def get_db_connection():
 
 def create_table(cursor, table_name, create_query):
     try:
-        cursor.execute(sql.SQL(create_query).format(sql.Identifier(table_name)))
+        # create_queryは既にフォーマット済みのSQL文字列なので、直接実行します
+        cursor.execute(create_query)
         logger.info(f"Table {table_name} creation query executed")
     except psycopg.Error as e:
         logger.error(f"Error creating table {table_name}: {e}")
@@ -111,15 +112,20 @@ def create_tables(cursor):
     ]
 
     for table_name, create_query in tables:
-        create_table(cursor, table_name, create_query.format(sql.Identifier(PDF_TABLE)))
+        formatted_query = sql.SQL(create_query).format(
+            sql.Identifier(table_name),
+            sql.Identifier(PDF_TABLE)
+        )
+        create_table(cursor, table_name, formatted_query)
 
 def create_index(cursor, table_name):
+    index_name = f"hnsw_{table_name}_embedding_idx"
     index_query = sql.SQL("""
-    CREATE INDEX IF NOT EXISTS {}_embedding_idx ON {}
+    CREATE INDEX IF NOT EXISTS {} ON {}
     USING hnsw((embedding::halfvec(3072)) halfvec_ip_ops)
     WITH (m = {}, ef_construction = {});
     """).format(
-        sql.Identifier(table_name),
+        sql.Identifier(index_name),
         sql.Identifier(table_name),
         sql.Literal(HNSW_M),
         sql.Literal(HNSW_EF_CONSTRUCTION)
