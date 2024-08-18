@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 '<div class="result">' +
                     "<h3>" + (index + 1) + '. <a href="' + link + '" target="_blank">' + linkText + "</a></h3>" +
                     "<p>Category: " + result.category + "</p>" +
-                    "<p>" + result.page_text + "</p>" +
+                    "<p>" + (result.chunk_text || result.page_text || "No text available") + "</p>" +
                     "<p>Distance: " + result.distance.toFixed(4) + "</p>" +
                 "</div>";
         });
