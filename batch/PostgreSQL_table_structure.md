@@ -22,10 +22,24 @@
 11. PDF_CATEGORY_TABLEのpdf_table_idはUNIQUEであるべきではありません。
 12. XLSX_TOC_TABLEはベクトル化しないため、HNSWインデックスは不要です。
 13. テーブル名はconfig.pyから読み込みます。
-14. この構造では、1つのPDFファイルを複数のカテゴリに関連付けることができます。同時に、各カテゴリ内でのPDFの重複を防ぎ、カテゴリ別の類似検索を可能にします。
+14. この構造では、1つのPDFファイルを複数のカテゴリに関連付けることができます。例えば、"/app/data/pdf/manual/category1/test.pdf"と"/app/data/pdf/manual/category2/test.pdf"のように、同じファイル名のPDFが複数のカテゴリに属する場合があります。
 15. XLSX_TOC_TABLEは、PDF_TABLEに保存されるPDF毎に存在する目次データを格納します。
 16. PDFとXLSXファイルの関連付けは、business_categoryでフィルタリングした後、file_name（拡張子を除く）で行います。
-17. file_nameには拡張子を含めません。拡張子を含むファイル名が必要な場合は、file_pathから取得できます。
+17. file_nameカラムには、PDFファイル名から拡張子を除いた形式で保存します。この情報は、PDFとXLSXファイルのペアを見つけるために重要です。
+18. file_nameには拡張子を含めません。拡張子を含むファイル名が必要な場合は、file_pathから取得できます。
+19. PDF_TABLEからfolder_nameカラムは削除されました。
+20. csv_to_aurora.pyとtoc_to_aurora.pyの両方で、PDFとXLSXファイルの関連付けのロジックを実装する必要があります。
+21. HNSWインデックスの作成はPDF_MANUAL_TABLEとPDF_FAQ_TABLEの両方に必要です。toc_to_aurora.pyではベクトル化を行わないため、HNSWインデックスの作成は不要です。
+
+## PDFとXLSXの関連付けクエリ例
+```sql
+SELECT p.*, x.*
+FROM PDF_TABLE p
+JOIN PDF_CATEGORY_TABLE c ON p.id = c.pdf_table_id
+JOIN XLSX_TOC_TABLE x ON p.id = x.pdf_table_id
+WHERE c.business_category = [指定のカテゴリ]
+  AND p.file_name = x.file_name;
+```
 
 ## PDF_TABLE (PDF情報テーブル):
 
@@ -140,11 +154,3 @@ WITH (m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION});
 CREATE INDEX IF NOT EXISTS {PDF_FAQ_TABLE}_embedding_idx ON {PDF_FAQ_TABLE}
 USING hnsw((embedding::halfvec(3072)) halfvec_ip_ops)
 WITH (m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION});
-
-## PDFとXLSXの関連付けクエリ例
-SELECT p.*, x.*
-FROM PDF_TABLE p
-JOIN PDF_CATEGORY_TABLE c ON p.id = c.pdf_table_id
-JOIN XLSX_TOC_TABLE x ON p.id = x.pdf_table_id
-WHERE c.business_category = [指定のカテゴリ]
-  AND p.file_name = x.file_name;

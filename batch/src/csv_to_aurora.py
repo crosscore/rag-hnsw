@@ -27,14 +27,19 @@ def process_csv_file(file_path, cursor, table_name, document_type):
     INSERT INTO {}
     (id, file_path, file_name, document_type, checksum, created_date_time)
     VALUES (%s, %s, %s, %s, %s, %s)
-    ON CONFLICT (file_path) DO NOTHING
+    ON CONFLICT (file_path) DO UPDATE SET
+    file_name = EXCLUDED.file_name,
+    document_type = EXCLUDED.document_type,
+    checksum = EXCLUDED.checksum,
+    created_date_time = EXCLUDED.created_date_time
     RETURNING id;
     """).format(sql.Identifier(PDF_TABLE))
 
+    file_name = os.path.splitext(os.path.basename(df['file_path'].iloc[0]))[0]  # Remove extension
     pdf_data = (
         uuid.uuid4(),
         df['file_path'].iloc[0],
-        df['file_name'].iloc[0],
+        file_name,
         1 if document_type == 'manual' else 2,
         df['checksum'].iloc[0],
         df['created_date_time'].iloc[0]
@@ -42,16 +47,10 @@ def process_csv_file(file_path, cursor, table_name, document_type):
 
     try:
         cursor.execute(insert_pdf_query, pdf_data)
-        pdf_table_id = cursor.fetchone()
-        if pdf_table_id:
-            pdf_table_id = pdf_table_id[0]
-            logger.info(f"Inserted PDF data into {PDF_TABLE}")
-        else:
-            cursor.execute(sql.SQL("SELECT id FROM {} WHERE file_path = %s").format(sql.Identifier(PDF_TABLE)), (df['file_path'].iloc[0],))
-            pdf_table_id = cursor.fetchone()[0]
-            logger.info(f"PDF data already exists in {PDF_TABLE}")
+        pdf_table_id = cursor.fetchone()[0]
+        logger.info(f"Inserted/Updated PDF data in {PDF_TABLE}")
     except Exception as e:
-        logger.error(f"Error inserting PDF data into {PDF_TABLE}: {e}")
+        logger.error(f"Error inserting/updating PDF data in {PDF_TABLE}: {e}")
         raise
 
     # Insert into PDF_CATEGORY_TABLE
@@ -151,7 +150,7 @@ def process_csv_files():
                     create_index(cursor, PDF_MANUAL_TABLE)
                     create_index(cursor, PDF_FAQ_TABLE)
                     conn.commit()
-                    logger.info("Tables created successfully")
+                    logger.info("Tables and indexes created successfully")
 
                     logger.info(f"Processing manual CSVs from: {CSV_MANUAL_DIR}")
                     process_directory(cursor, CSV_MANUAL_DIR, PDF_MANUAL_TABLE, "manual")

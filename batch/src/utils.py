@@ -97,9 +97,11 @@ def create_tables(cursor):
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
             pdf_table_id UUID NOT NULL REFERENCES {}(id),
+            file_name VARCHAR(1024) NOT NULL,
             toc_data TEXT NOT NULL,
             checksum VARCHAR(64) NOT NULL,
-            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
+            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+            UNIQUE(pdf_table_id, file_name)
         )
         """)
     ]

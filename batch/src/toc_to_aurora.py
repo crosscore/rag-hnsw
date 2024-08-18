@@ -35,46 +35,46 @@ def process_xlsx_file(file_path, cursor):
     tokyo_tz = pytz.timezone('Asia/Tokyo')
     created_date_time = datetime.now(tokyo_tz)
 
-    # Extract file name and folder name
-    file_name = os.path.basename(file_path)
-    folder_name = os.path.dirname(file_path)
+    # Extract file name without extension
+    file_name = os.path.splitext(os.path.basename(file_path))[0]
 
-    # Insert into PDF_TABLE first
-    pdf_table_id = uuid.uuid4()
-    insert_pdf_query = sql.SQL("""
-    INSERT INTO {}
-    (id, file_path, folder_name, file_name, document_type, checksum, created_date_time)
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
-    RETURNING id;
-    """).format(sql.Identifier(PDF_TABLE))
+    # Get the relative path for business_category
+    relative_path = os.path.relpath(os.path.dirname(file_path), TOC_XLSX_DIR)
+    business_category = int(relative_path.split(os.path.sep)[0])
 
-    pdf_data = (
-        pdf_table_id,
-        file_path,
-        folder_name,
-        file_name,
-        1,  # Assuming 1 is the document_type for manual
-        checksum,
-        created_date_time
+    # Check if a corresponding PDF exists in PDF_TABLE
+    check_pdf_query = sql.SQL("""
+    SELECT id FROM {}
+    WHERE file_name = %s AND id IN (
+        SELECT pdf_table_id FROM {} WHERE business_category = %s
     )
+    """).format(sql.Identifier(PDF_TABLE), sql.Identifier(PDF_CATEGORY_TABLE))
 
-    try:
-        cursor.execute(insert_pdf_query, pdf_data)
-        logger.info(f"Inserted PDF data into {PDF_TABLE}")
-    except Exception as e:
-        logger.error(f"Error inserting PDF data into {PDF_TABLE}: {e}")
-        raise
+    cursor.execute(check_pdf_query, (file_name, business_category))
+    existing_pdf = cursor.fetchone()
+
+    if existing_pdf:
+        pdf_table_id = existing_pdf[0]
+        logger.info(f"Found corresponding PDF in {PDF_TABLE}")
+    else:
+        logger.warning(f"No corresponding PDF found for XLSX file: {file_name}")
+        return
 
     # Insert into XLSX_TOC_TABLE
     insert_toc_query = sql.SQL("""
     INSERT INTO {}
-    (id, pdf_table_id, toc_data, checksum, created_date_time)
-    VALUES (%s, %s, %s, %s, %s);
+    (id, pdf_table_id, file_name, toc_data, checksum, created_date_time)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    ON CONFLICT (pdf_table_id, file_name) DO UPDATE SET
+    toc_data = EXCLUDED.toc_data,
+    checksum = EXCLUDED.checksum,
+    created_date_time = EXCLUDED.created_date_time;
     """).format(sql.Identifier(XLSX_TOC_TABLE))
 
     toc_data = (
         uuid.uuid4(),
         pdf_table_id,
+        file_name,
         toc_data,
         checksum,
         created_date_time
@@ -82,9 +82,9 @@ def process_xlsx_file(file_path, cursor):
 
     try:
         cursor.execute(insert_toc_query, toc_data)
-        logger.info(f"Inserted TOC data into {XLSX_TOC_TABLE}")
+        logger.info(f"Inserted/Updated TOC data in {XLSX_TOC_TABLE}")
     except Exception as e:
-        logger.error(f"Error inserting TOC data into {XLSX_TOC_TABLE}: {e}")
+        logger.error(f"Error inserting/updating TOC data in {XLSX_TOC_TABLE}: {e}")
         raise
 
 def process_toc_files():
