@@ -2,16 +2,11 @@
 import os
 import pandas as pd
 from psycopg import sql
-import logging
 import uuid
-from utils import get_db_connection, create_tables, get_table_count, process_file_common, calculate_checksum, get_current_datetime, get_file_name, get_business_category
+from utils import get_db_connection, create_tables, get_table_count, process_file_common, calculate_checksum, get_current_datetime, get_file_name, get_business_category, setup_logging
 from config import *
 
-log_dir = os.path.join(DATA_DIR, "log")
-os.makedirs(log_dir, exist_ok=True)
-logging.basicConfig(filename=os.path.join(log_dir, "toc_to_aurora.log"), level=logging.DEBUG,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = setup_logging("toc_to_aurora.log")
 
 def process_xlsx_file(file_path, cursor):
     logger.info(f"Processing XLSX file: {file_path}")

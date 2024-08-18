@@ -3,18 +3,13 @@ import os
 import pandas as pd
 from pypdf import PdfReader
 from openai import AzureOpenAI, OpenAI
-import logging
 import traceback
 import re
 from langchain_text_splitters import CharacterTextSplitter
-from utils import calculate_checksum, get_current_datetime, get_file_name, get_business_category
+from utils import calculate_checksum, get_current_datetime, get_file_name, get_business_category, setup_logging
 from config import *
 
-log_dir = os.path.join(DATA_DIR, "log")
-os.makedirs(log_dir, exist_ok=True)
-logging.basicConfig(filename=os.path.join(log_dir, "vectorizer.log"), level=logging.DEBUG,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = setup_logging("vectorizer.log")
 
 def initialize_openai_client():
     if ENABLE_OPENAI:

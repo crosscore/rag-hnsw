@@ -10,11 +10,17 @@ from datetime import datetime
 import hashlib
 from config import *
 
-log_dir = os.path.join(DATA_DIR, "log")
-os.makedirs(log_dir, exist_ok=True)
-logging.basicConfig(filename=os.path.join(log_dir, "database_utils.log"), level=logging.DEBUG,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+def setup_logging(log_filename):
+    log_dir = os.path.join(DATA_DIR, "log")
+    os.makedirs(log_dir, exist_ok=True)
+    logging.basicConfig(
+        filename=os.path.join(log_dir, log_filename),
+        level=logging.DEBUG,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    return logging.getLogger(__name__)
+
+logger = setup_logging("utils.log")
 
 @contextmanager
 def get_db_connection():
