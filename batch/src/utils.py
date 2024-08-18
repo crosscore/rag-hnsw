@@ -71,7 +71,7 @@ def create_tables(cursor):
             UNIQUE(pdf_table_id, business_category)
         )
         """),
-        (MANUAL_TABLE, """
+        (PDF_MANUAL_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
             pdf_table_id UUID NOT NULL REFERENCES {}(id),
@@ -82,7 +82,7 @@ def create_tables(cursor):
             created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
         )
         """),
-        (FAQ_TABLE, """
+        (PDF_FAQ_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
             pdf_table_id UUID NOT NULL REFERENCES {}(id),
@@ -93,7 +93,7 @@ def create_tables(cursor):
             created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
         )
         """),
-        (TOC_TABLE, """
+        (XLSX_TOC_TABLE, """
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
             pdf_table_id UUID NOT NULL REFERENCES {}(id),

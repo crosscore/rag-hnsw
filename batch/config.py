@@ -63,9 +63,9 @@ HNSW_EF_SEARCH = HNSW_SETTINGS.get("ef_search", 500)
 # PostgreSQL table settings
 PDF_TABLE = os.getenv("PDF_TABLE", "pdf_table")
 PDF_CATEGORY_TABLE = os.getenv("PDF_CATEGORY_TABLE","pdf_category_table")
-TOC_TABLE = os.getenv("TOC_TABLE", "toc_table")
-MANUAL_TABLE = os.getenv("MANUAL_TABLE", "manual_embeddings")
-FAQ_TABLE = os.getenv("FAQ_TABLE", "faq_embeddings")
+XLSX_TOC_TABLE = os.getenv("XLSX_TOC_TABLE", "XLSX_TOC_TABLE")
+PDF_MANUAL_TABLE = os.getenv("PDF_MANUAL_TABLE", "manual_embeddings")
+PDF_FAQ_TABLE = os.getenv("PDF_FAQ_TABLE", "faq_embeddings")
 
 # Other settings
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))

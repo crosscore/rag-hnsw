@@ -76,14 +76,14 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         logger.error(f"Error inserting category data into {PDF_CATEGORY_TABLE}: {e}")
         raise
 
-    # Insert into MANUAL_TABLE or FAQ_TABLE
-    if table_name == MANUAL_TABLE:
+    # Insert into PDF_MANUAL_TABLE or PDF_FAQ_TABLE
+    if table_name == PDF_MANUAL_TABLE:
         insert_query = sql.SQL("""
         INSERT INTO {}
         (id, pdf_table_id, chunk_no, document_page, chunk_text, embedding, created_date_time)
         VALUES (%s, %s, %s, %s, %s, %s::vector(3072), %s);
         """).format(sql.Identifier(table_name))
-    else:  # FAQ_TABLE
+    else:  # PDF_FAQ_TABLE
         insert_query = sql.SQL("""
         INSERT INTO {}
         (id, pdf_table_id, document_page, faq_no, page_text, embedding, created_date_time)
@@ -99,7 +99,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
             logger.warning(f"Incorrect vector dimension for row in {file_path}. Expected 3072, got {len(embedding)}. Skipping.")
             continue
 
-        if table_name == MANUAL_TABLE:
+        if table_name == PDF_MANUAL_TABLE:
             row_data = (
                 uuid.uuid4(),
                 pdf_table_id,
@@ -109,7 +109,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
                 embedding,
                 row['created_date_time']
             )
-        else:  # FAQ_TABLE
+        else:  # PDF_FAQ_TABLE
             row_data = (
                 uuid.uuid4(),
                 pdf_table_id,
@@ -148,16 +148,16 @@ def process_csv_files():
                 conn.autocommit = False
                 try:
                     create_tables(cursor)
-                    create_index(cursor, MANUAL_TABLE)
-                    create_index(cursor, FAQ_TABLE)
+                    create_index(cursor, PDF_MANUAL_TABLE)
+                    create_index(cursor, PDF_FAQ_TABLE)
                     conn.commit()
                     logger.info("Tables created successfully")
 
                     logger.info(f"Processing manual CSVs from: {CSV_MANUAL_DIR}")
-                    process_directory(cursor, CSV_MANUAL_DIR, MANUAL_TABLE, "manual")
+                    process_directory(cursor, CSV_MANUAL_DIR, PDF_MANUAL_TABLE, "manual")
 
                     logger.info(f"Processing FAQ CSVs from: {CSV_FAQ_DIR}")
-                    process_directory(cursor, CSV_FAQ_DIR, FAQ_TABLE, "faq")
+                    process_directory(cursor, CSV_FAQ_DIR, PDF_FAQ_TABLE, "faq")
 
                     conn.commit()
                     logger.info("All CSV files have been processed and inserted into the database.")
@@ -166,7 +166,7 @@ def process_csv_files():
                     logger.error(f"Transaction rolled back due to error: {e}")
                     raise
 
-                for table_name in [PDF_TABLE, PDF_CATEGORY_TABLE, MANUAL_TABLE, FAQ_TABLE]:
+                for table_name in [PDF_TABLE, PDF_CATEGORY_TABLE, PDF_MANUAL_TABLE, PDF_FAQ_TABLE]:
                     get_table_count(cursor, table_name)
 
     except Exception as e:

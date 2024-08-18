@@ -65,12 +65,12 @@ def process_xlsx_file(file_path, cursor):
         logger.error(f"Error inserting PDF data into {PDF_TABLE}: {e}")
         raise
 
-    # Insert into TOC_TABLE
+    # Insert into XLSX_TOC_TABLE
     insert_toc_query = sql.SQL("""
     INSERT INTO {}
     (id, pdf_table_id, toc_data, checksum, created_date_time)
     VALUES (%s, %s, %s, %s, %s);
-    """).format(sql.Identifier(TOC_TABLE))
+    """).format(sql.Identifier(XLSX_TOC_TABLE))
 
     toc_data = (
         uuid.uuid4(),
@@ -82,9 +82,9 @@ def process_xlsx_file(file_path, cursor):
 
     try:
         cursor.execute(insert_toc_query, toc_data)
-        logger.info(f"Inserted TOC data into {TOC_TABLE}")
+        logger.info(f"Inserted TOC data into {XLSX_TOC_TABLE}")
     except Exception as e:
-        logger.error(f"Error inserting TOC data into {TOC_TABLE}: {e}")
+        logger.error(f"Error inserting TOC data into {XLSX_TOC_TABLE}: {e}")
         raise
 
 def process_toc_files():
@@ -122,7 +122,7 @@ def process_toc_files():
                     logger.error(f"Transaction rolled back due to error: {e}")
                     raise
 
-                for table_name in [PDF_TABLE, TOC_TABLE]:
+                for table_name in [PDF_TABLE, XLSX_TOC_TABLE]:
                     get_table_count(cursor, table_name)
 
     except Exception as e:
