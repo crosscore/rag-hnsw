@@ -47,14 +47,16 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         with db_pool.connection() as conn:
             while True:
-                await process_websocket_message(websocket, conn)
-    except WebSocketDisconnect:
-        logger.info("WebSocket disconnected")
+                try:
+                    await process_websocket_message(websocket, conn)
+                except WebSocketDisconnect:
+                    logger.info("WebSocket disconnected")
+                    break
     except Exception as e:
         logger.error(f"Unexpected error in WebSocket connection: {str(e)}")
         logger.exception("Full traceback:")
     finally:
-        pass
+        logger.info("WebSocket connection closed")
 
 @websocket_error_handler
 async def process_websocket_message(websocket: WebSocket, conn):

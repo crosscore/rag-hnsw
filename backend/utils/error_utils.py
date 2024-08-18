@@ -2,6 +2,8 @@
 from fastapi import WebSocket
 import logging
 from functools import wraps
+import json
+from starlette.websockets import WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +15,8 @@ def websocket_error_handler(func):
     async def wrapper(websocket: WebSocket, *args, **kwargs):
         try:
             return await func(websocket, *args, **kwargs)
+        except WebSocketDisconnect:
+            logger.info("WebSocket disconnected")
         except json.JSONDecodeError:
             logger.error("Received invalid JSON data")
             await send_error_message(websocket, "Invalid JSON data received")
