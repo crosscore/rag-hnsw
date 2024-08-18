@@ -23,16 +23,16 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         return
 
     # Insert into PDF_TABLE first
-    pdf_table_id = uuid.uuid4()
     insert_pdf_query = sql.SQL("""
     INSERT INTO {}
     (id, file_path, file_name, document_type, checksum, created_date_time)
     VALUES (%s, %s, %s, %s, %s, %s)
+    ON CONFLICT (file_path) DO NOTHING
     RETURNING id;
     """).format(sql.Identifier(PDF_TABLE))
 
     pdf_data = (
-        pdf_table_id,
+        uuid.uuid4(),
         df['file_path'].iloc[0],
         df['file_name'].iloc[0],
         1 if document_type == 'manual' else 2,
@@ -42,7 +42,14 @@ def process_csv_file(file_path, cursor, table_name, document_type):
 
     try:
         cursor.execute(insert_pdf_query, pdf_data)
-        logger.info(f"Inserted PDF data into {PDF_TABLE}")
+        pdf_table_id = cursor.fetchone()
+        if pdf_table_id:
+            pdf_table_id = pdf_table_id[0]
+            logger.info(f"Inserted PDF data into {PDF_TABLE}")
+        else:
+            cursor.execute(sql.SQL("SELECT id FROM {} WHERE file_path = %s").format(sql.Identifier(PDF_TABLE)), (df['file_path'].iloc[0],))
+            pdf_table_id = cursor.fetchone()[0]
+            logger.info(f"PDF data already exists in {PDF_TABLE}")
     except Exception as e:
         logger.error(f"Error inserting PDF data into {PDF_TABLE}: {e}")
         raise
@@ -51,7 +58,8 @@ def process_csv_file(file_path, cursor, table_name, document_type):
     insert_category_query = sql.SQL("""
     INSERT INTO {}
     (id, pdf_table_id, business_category, created_date_time)
-    VALUES (%s, %s, %s, %s);
+    VALUES (%s, %s, %s, %s)
+    ON CONFLICT (pdf_table_id, business_category) DO NOTHING;
     """).format(sql.Identifier(PDF_CATEGORY_TABLE))
 
     category_data = (

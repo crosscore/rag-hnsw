@@ -8,7 +8,7 @@
 4. SMALLINT は PostgreSQL では int2 と同等です。
 5. INTEGER は PostgreSQL では int4 と同等です。
 6. vector(3072)データ型はpgvector拡張機能を使用しています。Dockerfileの設定により、事前にauroraコンテナのPostgreSQLにpgvector拡張機能がインストールされています。
-7. MANUAL_TABLEとFAQ_TABLEのembeddingカラムにはHNSWインデックスが作成されます。これはpgvector拡張機能によって提供される近似最近傍探索インデックスです。
+7. PDF_MANUAL_TABLEとPDF_FAQ_TABLEのembeddingカラムにはHNSWインデックスが作成されます。これはpgvector拡張機能によって提供される近似最近傍探索インデックスです。
 8. すべての外部キー（pdf_table_id）はPDF_TABLEのidカラムを参照しています。
 9. CHUNK_SIZEとCHUNK_OVERLAPの設定：
    - CHUNK_SIZE: 1000文字
@@ -20,15 +20,18 @@
     - ef_search: 500
     - これらの値はconfig.pyで設定されています。
 11. PDF_CATEGORY_TABLEのpdf_table_idはUNIQUEであるべきではありません。
-12. TOC_TABLEはベクトル化しないため、HNSWインデックスは不要です。
+12. XLSX_TOC_TABLEはベクトル化しないため、HNSWインデックスは不要です。
 13. テーブル名はconfig.pyから読み込みます。
 14. この構造では、1つのPDFファイルを複数のカテゴリに関連付けることができます。同時に、各カテゴリ内でのPDFの重複を防ぎ、カテゴリ別の類似検索を可能にします。
+15. XLSX_TOC_TABLEは、PDF_TABLEに保存されるPDF毎に存在する目次データを格納します。
+16. PDFとXLSXファイルの関連付けは、business_categoryでフィルタリングした後、file_name（拡張子を除く）で行います。
+17. file_nameには拡張子を含めません。拡張子を含むファイル名が必要な場合は、file_pathから取得できます。
 
 ## PDF_TABLE (PDF情報テーブル):
 
 - id (Primary Key): uuid, NOT NULL, UUID v4によるランダム値
 - file_path: varchar(1024) NOT NULL, PDFのフルパス
-- file_name: varchar(1024) NOT NULL, PDFのファイル名
+- file_name: varchar(1024) NOT NULL, PDFのファイル名（拡張子を除く）
 - document_type: SMALLINT NOT NULL, ドキュメントの種類 (1: manual, 2: faq)
 - checksum: varchar(64) NOT NULL, PDFのSHA256ハッシュ値
 - created_date_time: timestamp with time zone NOT NULL, レコード作成日時
@@ -42,15 +45,17 @@
 - created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 - UNIQUE(pdf_table_id, business_category)
 
-## TOC_TABLE (XLSX目次情報テーブル)
+## XLSX_TOC_TABLE (XLSX目次情報テーブル)
 
 - id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
 - pdf_table_id (Foreign Key): uuid NOT NULL, PDF_TABLEのidカラムを参照
+- file_name: varchar(1024) NOT NULL, XLSXのファイル名（拡張子を除く）
 - toc_data: text NOT NULL, XLSXファイルの1シート分を「","区切りのCSV形式」でテキスト化し、行単位で改行された内容
 - checksum: varchar(64) NOT NULL, XLSXファイルのSHA256ハッシュ値
 - created_date_time: timestamp with time zone NOT NULL, レコード作成日時
+- UNIQUE(pdf_table_id, file_name)
 
-## MANUAL_TABLE (PDFマニュアル情報テーブル)
+## PDF_MANUAL_TABLE (PDFマニュアル情報テーブル)
 
 - id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
 - pdf_table_id (Foreign Key): uuid NOT NULL, PDF_TABLEのidカラムを参照
@@ -60,7 +65,7 @@
 - embedding: vector(3072) NOT NULL, chunk_textのベクトルデータ
 - created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 
-## FAQ_TABLE (PDFマニュアル情報テーブル)
+## PDF_FAQ_TABLE (PDFマニュアル情報テーブル)
 
 - id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
 - pdf_table_id (Foreign Key): uuid NOT NULL, PDF_TABLEのidカラムを参照
@@ -94,17 +99,19 @@ CREATE TABLE IF NOT EXISTS {PDF_CATEGORY_TABLE} (
     UNIQUE(pdf_table_id, business_category)
 );
 
-### TOC_TABLE
-CREATE TABLE IF NOT EXISTS {TOC_TABLE} (
+### XLSX_TOC_TABLE
+CREATE TABLE IF NOT EXISTS {XLSX_TOC_TABLE} (
     id UUID PRIMARY KEY,
     pdf_table_id UUID NOT NULL REFERENCES {PDF_TABLE}(id),
+    file_name VARCHAR(1024) NOT NULL,
     toc_data TEXT NOT NULL,
     checksum VARCHAR(64) NOT NULL,
-    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
+    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    UNIQUE(pdf_table_id, file_name)
 );
 
-### MANUAL_TABLE
-CREATE TABLE IF NOT EXISTS {MANUAL_TABLE} (
+### PDF_MANUAL_TABLE
+CREATE TABLE IF NOT EXISTS {PDF_MANUAL_TABLE} (
     id UUID PRIMARY KEY,
     pdf_table_id UUID NOT NULL REFERENCES {PDF_TABLE}(id),
     chunk_no INTEGER NOT NULL,
@@ -114,8 +121,8 @@ CREATE TABLE IF NOT EXISTS {MANUAL_TABLE} (
     created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
-### FAQ_TABLE
-CREATE TABLE IF NOT EXISTS {FAQ_TABLE} (
+### PDF_FAQ_TABLE
+CREATE TABLE IF NOT EXISTS {PDF_FAQ_TABLE} (
     id UUID PRIMARY KEY,
     pdf_table_id UUID NOT NULL REFERENCES {PDF_TABLE}(id),
     document_page INTEGER NOT NULL,
@@ -126,10 +133,18 @@ CREATE TABLE IF NOT EXISTS {FAQ_TABLE} (
 );
 
 ### HNSWインデックスの作成
-CREATE INDEX IF NOT EXISTS {MANUAL_TABLE}_embedding_idx ON {MANUAL_TABLE}
+CREATE INDEX IF NOT EXISTS {PDF_MANUAL_TABLE}_embedding_idx ON {PDF_MANUAL_TABLE}
 USING hnsw((embedding::halfvec(3072)) halfvec_ip_ops)
 WITH (m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION});
 
-CREATE INDEX IF NOT EXISTS {FAQ_TABLE}_embedding_idx ON {FAQ_TABLE}
+CREATE INDEX IF NOT EXISTS {PDF_FAQ_TABLE}_embedding_idx ON {PDF_FAQ_TABLE}
 USING hnsw((embedding::halfvec(3072)) halfvec_ip_ops)
 WITH (m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION});
+
+## PDFとXLSXの関連付けクエリ例
+SELECT p.*, x.*
+FROM PDF_TABLE p
+JOIN PDF_CATEGORY_TABLE c ON p.id = c.pdf_table_id
+JOIN XLSX_TOC_TABLE x ON p.id = x.pdf_table_id
+WHERE c.business_category = [指定のカテゴリ]
+  AND p.file_name = x.file_name;

@@ -58,7 +58,8 @@ def create_tables(cursor):
             file_name VARCHAR(1024) NOT NULL,
             document_type SMALLINT NOT NULL,
             checksum VARCHAR(64) NOT NULL,
-            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
+            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+            UNIQUE(file_path)
         )
         """),
         (PDF_CATEGORY_TABLE, """
@@ -66,7 +67,8 @@ def create_tables(cursor):
             id UUID PRIMARY KEY,
             pdf_table_id UUID NOT NULL REFERENCES {}(id),
             business_category SMALLINT NOT NULL,
-            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
+            created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+            UNIQUE(pdf_table_id, business_category)
         )
         """),
         (MANUAL_TABLE, """
@@ -103,7 +105,7 @@ def create_tables(cursor):
     ]
 
     for table_name, create_query in tables:
-        create_table(cursor, table_name, create_query)
+        create_table(cursor, table_name, create_query.format(sql.Identifier(PDF_TABLE)))
 
 def create_index(cursor, table_name):
     index_query = sql.SQL("""
