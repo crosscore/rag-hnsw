@@ -20,40 +20,12 @@ VACUUM ANALYZE embeddings_table;
 コンテナ内でファイルを作成するユーザーの UID を確認:
 docker exec -it <コンテナ名> id
 
-ホストマシン上でのあなたの UID と GID を確認:
-id #確認コマンド
-
-UID が一致しない場合、以下のいずれかの対策を検討:
-
--   Dockerfile で USER 命令を使用して、ホストマシンと同じ UID を持つユーザーでコンテナを実行する。
-
-```
-USER 0
-```
-
--   ホストマシン上で、./backend ディレクトリの所有者を変更する。 (セキュリティリスクを考慮)
-
-```
-
-```
-
--   ボリュームマウント時に:uid=1000,gid=1000 のように UID と GID を指定する。 (コンテナ内でのユーザーとグループの整合性に注意が必要)
-
-```
-volumes:
- - ./backend:/app:uid=0,gid=0
-```
-
-\d+
-
 # .env
 
 # Base directories
-
 DATA_DIR='/app/data'
 
-# POSTGRES (オーバーライドが必要な場合のみ設定)
-
+# POSTGRES
 POSTGRES_DB=aurora
 POSTGRES_USER=user
 POSTGRES_PASSWORD=pass
@@ -61,17 +33,9 @@ POSTGRES_HOST=aurora
 POSTGRES_PORT=5432
 
 # Index settings
-
 INDEX_TYPE="hnsw"
 HNSW_SETTINGS='{"m": 16, "ef_construction": 256, "ef_search": 500}'
 
-# PostgreSQL table settings
-
-MANUAL_TABLE="manual_embeddings"
-FAQ_TABLE="faq_embeddings"
-TOC_TABLE="toc_table"
-
 # Other settings
-
 BATCH_SIZE=1000
 PIPELINE_EXECUTION_MODE="csv_to_aurora"
