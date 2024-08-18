@@ -34,7 +34,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
     else:  # PDF_FAQ_TABLE
         insert_query = sql.SQL("""
         INSERT INTO {}
-        (id, document_table_id, document_page, faq_no, page_text, embedding, created_date_time)
+        (id, document_table_id, document_page, faq_no, chunk_text, embedding, created_date_time)
         VALUES (%s, %s, %s, %s, %s, %s::vector(3072), %s);
         """).format(sql.Identifier(table_name))
 
@@ -63,7 +63,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
                 document_table_id,
                 row['document_page'],
                 row['faq_no'],
-                row['page_text'],
+                row['chunk_text'],
                 embedding,
                 row['created_date_time']
             )

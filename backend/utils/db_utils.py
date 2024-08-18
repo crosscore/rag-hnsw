@@ -52,7 +52,7 @@ def get_search_query(index_type, table_name):
         """)
     elif table_name == PDF_FAQ_TABLE:
         query = sql.SQL("""
-        SELECT t.document_table_id, t.document_page, t.faq_no, t.page_text,
+        SELECT t.document_table_id, t.document_page, t.faq_no, t.chunk_text,
                 (t.embedding::{vector_type} {operator} %s::{vector_type}) AS distance
         FROM {table} t
         JOIN {document_category_table} c ON t.document_table_id = c.document_table_id

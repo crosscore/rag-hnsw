@@ -35,7 +35,7 @@ async def process_search_results(conn, question_vector, category, top_n):
     for result in faq_results:
         formatted_result = format_faq_result(conn, result, category)
         formatted_faq_results.append(formatted_result)
-        faq_texts.append(formatted_result['page_text'])
+        faq_texts.append(formatted_result['chunk_text'])
 
     formatted_manual_results.sort(key=lambda x: x['distance'])
     formatted_faq_results.sort(key=lambda x: x['distance'])
@@ -58,13 +58,14 @@ def format_manual_result(conn, result, category):
     }
 
 def format_faq_result(conn, result, category):
-    document_table_id, document_page, faq_no, page_text, distance = result
+    document_table_id, document_page, faq_no, chunk_text, distance = result
     file_path, file_name = get_document_info(conn, document_table_id)
 
     return {
         "file_name": str(file_name),
         "page": int(document_page),
-        "page_text": str(page_text),
+        "faq_no": int(faq_no),
+        "chunk_text": str(chunk_text),
         "distance": float(distance),
         "category": category,
         "document_type": "faq",

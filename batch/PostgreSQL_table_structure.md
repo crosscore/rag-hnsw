@@ -79,14 +79,14 @@ WHERE c.business_category = [指定のカテゴリ]
 -   embedding: vector(3072) NOT NULL, chunk_text のベクトルデータ
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 
-## PDF_FAQ_TABLE (PDF マニュアル情報テーブル)
+## PDF_FAQ_TABLE (PDF FAQ情報テーブル)
 
 -   id (Primary Key): uuid NOT NULL, UUID v4 によるランダム値
 -   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLE の id カラムを参照
 -   document_page: INTEGER NOT NULL, PDF のページ番号 (開始番号: 1)
 -   faq_no: SMALLINT NOT NULL, ページ毎の FAQ 番号 (preprocess_faq_text 関数が返却する faq_no の数値)
--   page_text: text NOT NULL, ページ毎のテキスト (preprocess_faq_text 関数が返却する processed_text の文字列)
--   embedding: vector(3072) NOT NULL, page_text のベクトルデータ
+-   chunk_text: text NOT NULL, ページ毎のテキスト (preprocess_faq_text 関数が返却する processed_text の文字列)
+-   embedding: vector(3072) NOT NULL, chunk_text のベクトルデータ
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 
 ## テーブル作成クエリ
@@ -148,7 +148,7 @@ id UUID PRIMARY KEY,
 document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
 document_page INTEGER NOT NULL,
 faq_no SMALLINT NOT NULL,
-page_text TEXT NOT NULL,
+chunk_text TEXT NOT NULL,
 embedding VECTOR(3072) NOT NULL,
 created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
 );

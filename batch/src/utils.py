@@ -107,7 +107,7 @@ def create_tables(cursor):
             document_table_id UUID NOT NULL REFERENCES {}(id),
             document_page INTEGER NOT NULL,
             faq_no SMALLINT NOT NULL,
-            page_text TEXT NOT NULL,
+            chunk_text TEXT NOT NULL,
             embedding VECTOR(3072) NOT NULL,
             created_date_time TIMESTAMP WITH TIME ZONE NOT NULL
         )

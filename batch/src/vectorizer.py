@@ -129,7 +129,7 @@ def process_faq_page(page_text, page_num, file_info):
         'document_type': file_info['document_type'],
         'document_page': int(page_num),
         'faq_no': faq_no,
-        'page_text': processed_text,
+        'chunk_text': processed_text,
         'created_date_time': file_info['created_date_time'],
         'embedding': response.data[0].embedding
     }

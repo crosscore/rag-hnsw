@@ -53,23 +53,26 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     function displayResults(results, title) {
-        var resultsHTML = "<h2>" + title + "</h2>";
-        results.forEach(function(result, index) {
-            var documentType = result.document_type;
-            var category = result.category;
-            var fileName = result.file_name;
-            var page = result.page;
-            var link = "pdf/" + documentType + "/" + category + "/" + encodeURIComponent(fileName) + "?page=" + page;
-            var linkText = "/" + documentType + "/" + category + "/" + fileName + ", p." + page;
+        function displayResults(results, title) {
+            var resultsHTML = "<h2>" + title + "</h2>";
+            results.forEach(function (result, index) {
+                var documentType = result.document_type;
+                var category = result.category;
+                var fileName = result.file_name;
+                var page = result.page;
+                var link = "pdf/" + documentType + "/" + category + "/" + encodeURIComponent(fileName) + "?page=" + page;
+                var linkText = "/" + documentType + "/" + category + "/" + fileName + ", p." + page;
 
-            resultsHTML +=
-                '<div class="result">' +
+                resultsHTML +=
+                    '<div class="result">' +
                     "<h3>" + (index + 1) + '. <a href="' + link + '" target="_blank">' + linkText + "</a></h3>" +
                     "<p>Category: " + result.category + "</p>" +
-                    "<p>" + (result.chunk_text || result.page_text || "No text available") + "</p>" +
+                    (result.faq_no ? "<p>FAQ No: " + result.faq_no + "</p>" : "") +
+                    "<p>" + (result.chunk_text || "No text available") + "</p>" +
                     "<p>Distance: " + result.distance.toFixed(4) + "</p>" +
-                "</div>";
-        });
-        searchResults.innerHTML += resultsHTML;
+                    "</div>";
+            });
+            searchResults.innerHTML += resultsHTML;
+        }
     }
 });
