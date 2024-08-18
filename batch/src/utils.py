@@ -220,7 +220,7 @@ def get_current_datetime():
     return datetime.now(tokyo_tz)
 
 def get_file_name(file_path):
-    return os.path.splitext(os.path.basename(file_path))[0]
+    return os.path.basename(file_path)
 
 def get_business_category(file_path, base_dir):
     relative_path = os.path.relpath(os.path.dirname(file_path), base_dir)

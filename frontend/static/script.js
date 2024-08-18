@@ -61,8 +61,8 @@ document.addEventListener("DOMContentLoaded", function() {
             var page = result.page;
             var link = "pdf/" + documentType + "/" + category + "/" + encodeURIComponent(fileName) + "?page=" + page;
             var linkText = "/" + documentType + "/" + category + "/" + fileName + ", p." + page;
-            
-            resultsHTML += 
+
+            resultsHTML +=
                 '<div class="result">' +
                     "<h3>" + (index + 1) + '. <a href="' + link + '" target="_blank">' + linkText + "</a></h3>" +
                     "<p>Category: " + result.category + "</p>" +

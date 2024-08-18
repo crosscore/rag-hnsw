@@ -5,5 +5,5 @@ if docker compose ps | grep "uvicorn"; then
     docker compose down
 else
     echo "Starting Docker containers..."
-    docker compose up --build -d
+    docker compose up --build
 fi

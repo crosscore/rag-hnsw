@@ -17,11 +17,11 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         logger.error(f"Error reading CSV file {file_path}: {e}")
         return
 
-    file_name = get_file_name(file_path)
+    pdf_file_path = df['file_path'].iloc[0]
+    file_name = get_file_name(pdf_file_path)
     checksum = calculate_checksum(file_path)
     created_date_time = get_current_datetime()
     business_category = get_business_category(file_path, CSV_MANUAL_DIR if document_type == 'manual' else CSV_FAQ_DIR)
-
     document_table_id = process_file_common(cursor, df['file_path'].iloc[0], file_name, DOCUMENT_TYPE_PDF_MANUAL if document_type == 'manual' else DOCUMENT_TYPE_PDF_FAQ, checksum, created_date_time, business_category)
 
     # Insert into PDF_MANUAL_TABLE or PDF_FAQ_TABLE

@@ -25,11 +25,10 @@
 14. この構造では、1 つの PDF ファイルを複数のカテゴリに関連付けることができます。例えば、"/app/data/pdf/manual/category1/test.pdf"と"/app/data/pdf/manual/category2/test.pdf"のように、同じファイル名の PDF が複数のカテゴリに属する場合があります。
 15. XLSX_TOC_TABLE は、DOCUMENT_TABLE に保存される PDF 毎に存在する目次データを格納します。
 16. PDF と XLSX ファイルの関連付けは、business_category でフィルタリングした後、file_name（拡張子を除く）で行います。
-17. file_name カラムには、PDF ファイル名から拡張子を除いた形式で保存します。この情報は、PDF と XLSX ファイルのペアを見つけるために重要です。
-18. file_name には拡張子を含めません。拡張子を含むファイル名が必要な場合は、file_path から取得できます。
-19. DOCUMENT_TABLE から folder_name カラムは削除されました。
-20. csv_to_aurora.py と toc_to_aurora.py の両方で、PDF と XLSX ファイルの関連付けのロジックを実装する必要があります。
-21. HNSW インデックスの作成は PDF_MANUAL_TABLE と PDF_FAQ_TABLE の両方に必要です。toc_to_aurora.py ではベクトル化を行わないため、HNSW インデックスの作成は不要です。
+17. file_name カラムには、拡張子を含めたファイル名を保存します。
+18. DOCUMENT_TABLE から folder_name カラムは削除されました。
+19. csv_to_aurora.py と toc_to_aurora.py の両方で、PDF と XLSX ファイルの関連付けのロジックを実装する必要があります。
+20. HNSW インデックスの作成は PDF_MANUAL_TABLE と PDF_FAQ_TABLE の両方に必要です。toc_to_aurora.py ではベクトル化を行わないため、HNSW インデックスの作成は不要です。
 
 ## PDF と XLSX の関連付けクエリ例
 
@@ -39,14 +38,14 @@ FROM DOCUMENT_TABLE p
 JOIN DOCUMENT_CATEGORY_TABLE c ON p.id = c.document_table_id
 JOIN XLSX_TOC_TABLE x ON p.id = x.document_table_id
 WHERE c.business_category = [指定のカテゴリ]
-  AND p.file_name = x.file_name;
+  AND SUBSTRING(p.file_name, 1, LENGTH(p.file_name) - 4) = SUBSTRING(x.file_name, 1, LENGTH(x.file_name) - 5);
 ```
 
 ## DOCUMENT_TABLE (PDF 情報テーブル):
 
 -   id (Primary Key): uuid, NOT NULL, UUID v4 によるランダム値
 -   file_path: varchar(1024) NOT NULL, PDF のフルパス
--   file_name: varchar(1024) NOT NULL, PDF のファイル名（拡張子を除く）
+-   file_name: varchar(1024) NOT NULL, PDF のファイル名（拡張子を含む）
 -   document_type: SMALLINT NOT NULL, ドキュメントの種類 (1: manual(PDF), 2: faq(PDF), 3: toc(XLSX))
 -   checksum: varchar(64) NOT NULL, PDF の SHA256 ハッシュ値
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
@@ -64,7 +63,7 @@ WHERE c.business_category = [指定のカテゴリ]
 
 -   id (Primary Key): uuid NOT NULL, UUID v4 によるランダム値
 -   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLE の id カラムを参照
--   file_name: varchar(1024) NOT NULL, XLSX のファイル名（拡張子を除く）
+-   file_name: varchar(1024) NOT NULL, XLSX のファイル名（拡張子を含む）
 -   toc_data: text NOT NULL, XLSX ファイルの 1 シート分を「","区切りの CSV 形式」でテキスト化し、行単位で改行された内容
 -   checksum: varchar(64) NOT NULL, XLSX ファイルの SHA256 ハッシュ値
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時

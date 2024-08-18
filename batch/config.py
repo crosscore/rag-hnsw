@@ -50,7 +50,7 @@ TOC_XLSX_DIR = os.path.join(XLSX_INPUT_DIR, "toc")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "aurora")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "user")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "pass")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "api1_aurora")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "aurora")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", 5432))
 
 # Index settings

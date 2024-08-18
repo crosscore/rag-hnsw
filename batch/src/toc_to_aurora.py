@@ -20,7 +20,7 @@ def process_xlsx_file(file_path, cursor):
     # Convert DataFrame to CSV string
     toc_data = df.to_csv(index=False)
 
-    file_name = get_file_name(file_path)
+    file_name = get_file_name(file_path)  # This now includes the extension
     checksum = calculate_checksum(file_path)
     created_date_time = get_current_datetime()
     business_category = get_business_category(file_path, TOC_XLSX_DIR)
