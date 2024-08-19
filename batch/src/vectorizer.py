@@ -179,7 +179,8 @@ def process_pdf_files(input_dir, output_dir, document_type):
                 output_subdir = os.path.join(output_dir, relative_path)
                 os.makedirs(output_subdir, exist_ok=True)
 
-                csv_file_name = get_file_name(file_path)
+                base_name = os.path.splitext(os.path.basename(file_path))[0]
+                csv_file_name = f"{base_name}.csv"
                 output_file = os.path.join(output_subdir, csv_file_name)
 
                 processed_data.to_csv(output_file, index=False)
