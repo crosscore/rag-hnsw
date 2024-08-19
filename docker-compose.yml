@@ -15,12 +15,12 @@ services:
             - ./frontend:/app
             - /var/run/docker.sock:/var/run/docker.sock
         ports:
-            - "8000:8000"
+            - "8101:8101"
         depends_on:
             - backend
         networks:
             - app_network
-        command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+        command: uvicorn main:app --host 0.0.0.0 --port 8101 --reload
 
     backend:
         container_name: backend
@@ -35,7 +35,7 @@ services:
             - ./backend:/app
             - /var/run/docker.sock:/var/run/docker.sock
         ports:
-            - "8001:8001"
+            - "8102:8001"
         depends_on:
             - aurora
         networks:
@@ -55,7 +55,7 @@ services:
             - ./batch:/app
             - /var/run/docker.sock:/var/run/docker.sock
         ports:
-            - "8002:8002"
+            - "8103:8002"
         depends_on:
             - aurora
         networks:
@@ -76,7 +76,7 @@ services:
         volumes:
             - pg_data:/var/lib/postgresql/data
         ports:
-            - "5432:5432"
+            - "8134:5432"
         networks:
             - app_network
 

@@ -16,11 +16,14 @@ document.addEventListener("DOMContentLoaded", function() {
     socket.onmessage = function(event) {
         try {
             var data = JSON.parse(event.data);
+            console.log("Received data:", data);  // データ受信のログ
             if (data.error) {
                 searchResults.innerHTML = "<p>Error: " + data.error + "</p>";
             } else if (data.manual_results) {
+                console.log("Displaying manual results:", data.manual_results);
                 displayResults(data.manual_results, "Manual Search Results");
             } else if (data.faq_results) {
+                console.log("Displaying FAQ results:", data.faq_results);
                 displayResults(data.faq_results, "FAQ Search Results");
             } else if (data.ai_response_chunk) {
                 var responseP = aiResponse.querySelector("p") || aiResponse.appendChild(document.createElement("p"));
@@ -54,23 +57,45 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function displayResults(results, title) {
         var resultsHTML = "<h2>" + title + "</h2>";
-        results.forEach(function (result, index) {
-            var documentType = result.document_type;
-            var category = result.category;
-            var fileName = result.file_name;
-            var page = result.page;
-            var link = "pdf/" + documentType + "/" + category + "/" + encodeURIComponent(fileName) + "?page=" + page;
-            var linkText = "/" + documentType + "/" + category + "/" + fileName + ", p." + page;
-
-            resultsHTML +=
-                '<div class="result">' +
-                "<h3>" + (index + 1) + '. <a href="' + link + '" target="_blank">' + linkText + "</a></h3>" +
-                "<p>Category: " + result.category + "</p>" +
-                (result.faq_no ? "<p>FAQ No: " + result.faq_no + "</p>" : "") +
-                "<p>" + (result.chunk_text || "No text available") + "</p>" +
-                "<p>Distance: " + result.distance.toFixed(4) + "</p>" +
-                "</div>";
-        });
+        if (results && results.length > 0) {
+            resultsHTML += generateResultsHTML(results, title.toLowerCase().includes("manual") ? "manual" : "faq");
+        } else {
+            resultsHTML += "<p>No results found.</p>";
+        }
         searchResults.innerHTML += resultsHTML;
+    }
+    
+    function generateResultsHTML(results, type) {
+        return results.map((result, index) => {
+            var link = `pdf/${type}/${result.category}/${encodeURIComponent(result.file_name)}?page=${result.page}`;
+            var linkText = `/${type}/${result.category}/${result.file_name}, p.${result.page}`;
+    
+            return `
+                <div class="result">
+                    <h3>${index + 1}. <a href="${link}" target="_blank">${linkText}</a></h3>
+                    <p>Category: ${result.category}</p>
+                    ${type === 'faq' ? `<p>FAQ No: ${result.faq_no}</p>` : ''}
+                    <p>${result.chunk_text || "No text available"}</p>
+                    <p>Distance: ${result.distance.toFixed(4)}</p>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function generateResultsHTML(results, type) {
+        return results.map((result, index) => {
+            var link = `pdf/${type}/${result.category}/${encodeURIComponent(result.file_name)}?page=${result.page}`;
+            var linkText = `/${type}/${result.category}/${result.file_name}, p.${result.page}`;
+
+            return `
+                <div class="result">
+                    <h3>${index + 1}. <a href="${link}" target="_blank">${linkText}</a></h3>
+                    <p>Category: ${result.category}</p>
+                    ${type === 'faq' ? `<p>FAQ No: ${result.faq_no}</p>` : ''}
+                    <p>${result.chunk_text || "No text available"}</p>
+                    <p>Distance: ${result.distance.toFixed(4)}</p>
+                </div>
+            `;
+        }).join('');
     }
 });

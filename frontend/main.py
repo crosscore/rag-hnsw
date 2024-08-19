@@ -102,10 +102,13 @@ async def forward_to_client(client_ws: WebSocket, backend_ws: websockets.WebSock
         while True:
             response = await backend_ws.recv()
             response_data = json.loads(response)
+            logger.debug(f"Received from backend: {response_data}")
 
             if "manual_results" in response_data:
+                logger.debug(f"Sending manual results to client: {response_data['manual_results']}")
                 await client_ws.send_json({"manual_results": response_data["manual_results"]})
             elif "faq_results" in response_data:
+                logger.debug(f"Sending FAQ results to client: {response_data['faq_results']}")
                 await client_ws.send_json({"faq_results": response_data["faq_results"]})
             elif "ai_response_chunk" in response_data:
                 await client_ws.send_json({"ai_response_chunk": response_data["ai_response_chunk"]})
@@ -118,4 +121,4 @@ async def forward_to_client(client_ws: WebSocket, backend_ws: websockets.WebSock
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=8101, log_level="info")
