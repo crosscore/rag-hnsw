@@ -1,5 +1,4 @@
 # rag-hnsw/backend/main.py
-# rag-hnsw/backend/main.py
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
