@@ -45,21 +45,23 @@ async def process_search_results(conn, question_vector, category, top_n):
 def format_manual_result(conn, result, category):
     document_table_id, chunk_no, document_page, chunk_text, distance = result
     file_path, file_name = get_document_info(conn, document_table_id)
+    category_name = next(name for name, value in BUSINESS_CATEGORY_MAPPING.items() if value == category)
 
     return {
         "file_name": str(file_name),
         "page": int(document_page),
         "chunk_text": str(chunk_text),
         "distance": float(distance),
-        "category": category,
+        "category": category_name,
         "document_type": "manual",
-        "link_text": f"/manual/{category}/{file_name}, p.{document_page}",
-        "link": f"pdf/manual/{category}/{file_name}?page={document_page}",
+        "link_text": f"/manual/{category_name}/{file_name}, p.{document_page}",
+        "link": f"pdf/manual/{category_name}/{file_name}?page={document_page}",
     }
 
 def format_faq_result(conn, result, category):
     document_table_id, document_page, faq_no, chunk_text, distance = result
     file_path, file_name = get_document_info(conn, document_table_id)
+    category_name = next(name for name, value in BUSINESS_CATEGORY_MAPPING.items() if value == category)
 
     return {
         "file_name": str(file_name),
@@ -67,10 +69,10 @@ def format_faq_result(conn, result, category):
         "faq_no": int(faq_no),
         "chunk_text": str(chunk_text),
         "distance": float(distance),
-        "category": category,
+        "category": category_name,
         "document_type": "faq",
-        "link_text": f"/faq/{category}/{file_name}, p.{document_page}",
-        "link": f"pdf/faq/{category}/{file_name}?page={document_page}",
+        "link_text": f"/faq/{category_name}/{file_name}, p.{document_page}",
+        "link": f"pdf/faq/{category_name}/{file_name}?page={document_page}",
     }
 
 def get_document_info(conn, document_table_id):

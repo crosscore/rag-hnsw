@@ -31,7 +31,8 @@ def get_available_categories():
                 FROM {}
                 ORDER BY business_category
             """).format(sql.Identifier(DOCUMENT_CATEGORY_TABLE))
-            return [row[0] for row in execute_query(conn, query)]
+            categories = [row[0] for row in execute_query(conn, query)]
+            return {name: value for name, value in BUSINESS_CATEGORY_MAPPING.items() if value in categories}
     except psycopg_pool.PoolError as e:
         logger.error(f"Error fetching available categories: {e}")
         raise
@@ -72,11 +73,11 @@ def get_search_query(index_type, table_name):
 
 def execute_search_query(conn, question_vector, category, top_n, table_name):
     query = get_search_query(INDEX_TYPE, table_name)
-    results = execute_query(conn, query, (question_vector, category, top_n))
+    results = execute_query(conn, query, (question_vector, int(category), top_n))
 
     if len(results) < top_n:
         additional_query = get_search_query(INDEX_TYPE, table_name)
-        additional_results = execute_query(conn, additional_query, (question_vector, category, top_n - len(results)))
+        additional_results = execute_query(conn, additional_query, (question_vector, int(category), top_n - len(results)))
         results.extend(additional_results)
 
     return results[:top_n]

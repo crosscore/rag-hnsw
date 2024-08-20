@@ -47,7 +47,8 @@ document.addEventListener("DOMContentLoaded", function() {
         var query = searchInput.value;
         var category = categorySelect.value;
         if (query && category) {
-            socket.send(JSON.stringify({ question: query, category: category }));
+            console.log("Sending search request:", { question: query, category: parseInt(category) });
+            socket.send(JSON.stringify({ question: query, category: parseInt(category) }));
             searchResults.innerHTML = "<p>Searching...</p>";
             aiResponse.innerHTML = "<h2>AI Response:</h2>";
         } else {
@@ -63,23 +64,6 @@ document.addEventListener("DOMContentLoaded", function() {
             resultsHTML += "<p>No results found.</p>";
         }
         searchResults.innerHTML += resultsHTML;
-    }
-    
-    function generateResultsHTML(results, type) {
-        return results.map((result, index) => {
-            var link = `pdf/${type}/${result.category}/${encodeURIComponent(result.file_name)}?page=${result.page}`;
-            var linkText = `/${type}/${result.category}/${result.file_name}, p.${result.page}`;
-    
-            return `
-                <div class="result">
-                    <h3>${index + 1}. <a href="${link}" target="_blank">${linkText}</a></h3>
-                    <p>Category: ${result.category}</p>
-                    ${type === 'faq' ? `<p>FAQ No: ${result.faq_no}</p>` : ''}
-                    <p>${result.chunk_text || "No text available"}</p>
-                    <p>Distance: ${result.distance.toFixed(4)}</p>
-                </div>
-            `;
-        }).join('');
     }
 
     function generateResultsHTML(results, type) {

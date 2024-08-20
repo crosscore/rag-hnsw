@@ -13,9 +13,8 @@
 
         <div class="search-container">
             <select id="category-select">
-                <option value="">カテゴリを選択してください</option>
                 {% for category in categories %}
-                <option value="{{ category }}">{{ category }}</option>
+                <option value="{{ category.value }}">{{ category.value }}: {{ category.name }}</option>
                 {% endfor %}
             </select>
             <input type="text" id="search-input" placeholder="検索キーワードを入力">
@@ -32,6 +31,7 @@
             </div>
         </div>
     </div>
+
     <script src="/static/script.js"></script>
 </body>
 </html>

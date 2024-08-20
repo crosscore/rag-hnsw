@@ -1,4 +1,5 @@
 # rag-hnsw/frontend/main.py
+
 from fastapi import FastAPI, WebSocket, Request, WebSocketDisconnect, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -31,6 +32,7 @@ async def read_root(request: Request):
         async with httpx.AsyncClient() as client:
             response = await client.get(f"{BACKEND_HTTP_URL}/categories")
             categories = response.json()["categories"]
+            categories = [{"name": name, "value": value} for name, value in categories.items()]
     except Exception as e:
         logger.error(f"Error fetching categories: {str(e)}")
         categories = []

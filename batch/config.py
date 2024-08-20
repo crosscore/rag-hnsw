@@ -54,7 +54,7 @@ POSTGRES_HOST = os.getenv("POSTGRES_HOST", "aurora")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", 5432))
 
 # pgvector settings
-OPERATOR = os.getenv("OPERATOR", "#")
+OPERATOR = os.getenv("OPERATOR", "<#>")
 
 # Index settings
 INDEX_TYPE = os.getenv("INDEX_TYPE", "hnsw").lower()
