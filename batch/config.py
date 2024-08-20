@@ -53,6 +53,9 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "pass")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "aurora")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", 5432))
 
+# pgvector settings
+OPERATOR = os.getenv("OPERATOR", "#")
+
 # Index settings
 INDEX_TYPE = os.getenv("INDEX_TYPE", "hnsw").lower()
 HNSW_SETTINGS = json.loads(os.getenv("HNSW_SETTINGS", '{"m": 16, "ef_construction": 256, "ef_search": 500}'))

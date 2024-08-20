@@ -38,7 +38,7 @@ def get_available_categories():
 
 def get_search_query(index_type, table_name):
     vector_type = "halfvec(3072)" if index_type == "hnsw" else "vector(3072)"
-    operator = "<#>"
+    operator = OPERATOR
 
     if table_name == PDF_MANUAL_TABLE:
         query = sql.SQL("""
