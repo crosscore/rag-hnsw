@@ -15,12 +15,12 @@ services:
             - ./frontend:/app
             - /var/run/docker.sock:/var/run/docker.sock
         ports:
-            - "8101:8101"
+            - "8101:8000"
         depends_on:
             - backend
         networks:
             - app_network
-        command: uvicorn main:app --host 0.0.0.0 --port 8101 --reload
+        command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
     backend:
         container_name: backend

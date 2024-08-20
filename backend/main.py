@@ -15,7 +15,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8101", "http://frontend:8101"],
+    allow_origins=["http://localhost:8000", "http://frontend:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -82,7 +82,7 @@ async def process_websocket_message(websocket: WebSocket, conn):
 
         await websocket.send_json({"manual_results": manual_results})
         await websocket.send_json({"faq_results": faq_results})
-        
+
         logger.debug(f"Sent search results for question: {question[:50]}... in category: {category}")
 
         if manual_texts or faq_texts:
@@ -103,4 +103,4 @@ async def process_websocket_message(websocket: WebSocket, conn):
 if __name__ == "__main__":
     import uvicorn
     logger.info("Starting the application")
-    uvicorn.run(app, host="0.0.0.0", port=8101, log_level="debug")
+    uvicorn.run(app, host="0.0.0.0", port=8001, log_level="debug")

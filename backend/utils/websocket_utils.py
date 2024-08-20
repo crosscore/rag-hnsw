@@ -97,7 +97,7 @@ async def generate_ai_response(client, question, manual_texts, faq_texts, websoc
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             temperature=1.00,
-            max_tokens=250,
+            max_tokens=50,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": formatted_prompt}
