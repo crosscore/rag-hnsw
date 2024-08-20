@@ -224,4 +224,10 @@ def get_file_name(file_path):
 
 def get_business_category(file_path, base_dir):
     relative_path = os.path.relpath(os.path.dirname(file_path), base_dir)
-    return int(relative_path.split(os.path.sep)[0])
+    category_name = relative_path.split(os.path.sep)[0]
+    
+    if category_name in BUSINESS_CATEGORY_MAPPING:
+        return BUSINESS_CATEGORY_MAPPING[category_name]
+    else:
+        raise ValueError(f"Unknown business category: {category_name}. Valid categories are: {', '.join(BUSINESS_CATEGORY_MAPPING.keys())}")
+

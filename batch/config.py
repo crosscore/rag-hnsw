@@ -75,6 +75,24 @@ DOCUMENT_TYPE_PDF_MANUAL = 1
 DOCUMENT_TYPE_PDF_FAQ = 2
 DOCUMENT_TYPE_XLSX_TOC = 3
 
+# Business Category Mapping
+DEFAULT_BUSINESS_CATEGORY_MAPPING = {
+    "新契約": 1,
+    "収納": 2,
+    "保全": 3,
+    "保険金": 4,
+    "商品": 5,
+    "MSAケア": 6,
+    "手数料": 7,
+    "代理店制度": 8,
+    "職域推進": 9,
+    "人事": 10,
+    "会計": 11
+}
+
+# Load business category mapping from environment variable if available
+BUSINESS_CATEGORY_MAPPING = json.loads(os.getenv('BUSINESS_CATEGORY_MAPPING', json.dumps(DEFAULT_BUSINESS_CATEGORY_MAPPING)))
+
 # Other settings
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
 PIPELINE_EXECUTION_MODE = os.getenv("PIPELINE_EXECUTION_MODE", "csv_to_aurora")
