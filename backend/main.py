@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
 import logging
 from utils.pdf_utils import get_pdf
-from utils.db_utils import get_db_connection, get_available_categories
-from utils.websocket_utils import get_openai_client, process_search_results, generate_ai_response
+from utils.db_utils import get_db_connection, get_available_categories, get_toc_data
+from utils.websocket_utils import get_openai_client, process_search_results, generate_ai_response, generate_first_ai_response
 from config import *
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -70,6 +70,7 @@ async def process_websocket_message(websocket: WebSocket, conn):
 
         logger.debug(f"Processing question: {question[:50]}... in category: {category}")
 
+        # 類似検索の処理
         question_vector = client.embeddings.create(
             input=question,
             model="text-embedding-3-large" if ENABLE_OPENAI else AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT
@@ -85,8 +86,13 @@ async def process_websocket_message(websocket: WebSocket, conn):
 
         logger.debug(f"Sent search results for question: {question[:50]}... in category: {category}")
 
+        # 1回目のAI応答の生成
+        toc_data = get_toc_data(conn, category)
+        first_ai_response = await generate_first_ai_response(client, question, toc_data, websocket)
+
+        # 2回目（最終）のAI応答の生成
         if manual_texts or faq_texts:
-            await generate_ai_response(client, question, manual_texts, faq_texts, websocket)
+            await generate_ai_response(client, question, manual_texts, faq_texts, first_ai_response, websocket)
         else:
             await websocket.send_json({"ai_response_chunk": "申し訳ありませんが、該当する情報が見つかりませんでした。"})
             await websocket.send_json({"ai_response_end": True})

@@ -5,7 +5,8 @@ document.addEventListener("DOMContentLoaded", function() {
     var searchButton = document.getElementById("search-button");
     var searchResults = document.getElementById("search-results");
     var categorySelect = document.getElementById("category-select");
-    var aiResponse = document.getElementById("ai-response");
+    var firstAiResponse = document.getElementById("first-ai-response");
+    var finalAiResponse = document.getElementById("final-ai-response");
 
     var socket = new WebSocket("ws://" + window.location.host + "/ws");
 
@@ -16,22 +17,30 @@ document.addEventListener("DOMContentLoaded", function() {
     socket.onmessage = function(event) {
         try {
             var data = JSON.parse(event.data);
-            console.log("Received data:", data);  // データ受信のログ
+            console.log("Received data:", data);
             if (data.error) {
-                searchResults.innerHTML = "<p>Error: " + data.error + "</p>";
+                searchResults.innerHTML += "<p>Error: " + data.error + "</p>";
             } else if (data.manual_results) {
                 console.log("Displaying manual results:", data.manual_results);
                 displayResults(data.manual_results, "Manual Search Results");
             } else if (data.faq_results) {
                 console.log("Displaying FAQ results:", data.faq_results);
                 displayResults(data.faq_results, "FAQ Search Results");
+            } else if (data.first_ai_response_chunk) {
+                var responseP = firstAiResponse.querySelector("p") || firstAiResponse.appendChild(document.createElement("p"));
+                responseP.innerHTML += data.first_ai_response_chunk;
+            } else if (data.first_ai_response_end) {
+                var responseP = firstAiResponse.querySelector("p");
+                if (responseP) {
+                    responseP.innerHTML += "<br><em>(First response complete)</em>";
+                }
             } else if (data.ai_response_chunk) {
-                var responseP = aiResponse.querySelector("p") || aiResponse.appendChild(document.createElement("p"));
+                var responseP = finalAiResponse.querySelector("p") || finalAiResponse.appendChild(document.createElement("p"));
                 responseP.innerHTML += data.ai_response_chunk;
             } else if (data.ai_response_end) {
-                var responseP = aiResponse.querySelector("p");
+                var responseP = finalAiResponse.querySelector("p");
                 if (responseP) {
-                    responseP.innerHTML += "<br><em>(Response complete)</em>";
+                    responseP.innerHTML += "<br><em>(Final response complete)</em>";
                 }
             }
         } catch (error) {
@@ -50,7 +59,8 @@ document.addEventListener("DOMContentLoaded", function() {
             console.log("Sending search request:", { question: query, category: parseInt(category) });
             socket.send(JSON.stringify({ question: query, category: parseInt(category) }));
             searchResults.innerHTML = "<p>Searching...</p>";
-            aiResponse.innerHTML = "<h2>AI Response:</h2>";
+            firstAiResponse.innerHTML = "<h2>First AI Response:</h2>";
+            finalAiResponse.innerHTML = "<h2>Final AI Response:</h2>";
         } else {
             searchResults.innerHTML = "<p>Please enter a query and select a category</p>";
         }

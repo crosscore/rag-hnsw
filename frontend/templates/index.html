@@ -14,10 +14,10 @@
         <div class="search-container">
             <select id="category-select">
                 {% for category in categories %}
-                <option value="{{ category.value }}">{{ category.value }}: {{ category.name }}</option>
+                <option value="{{ category.value }}">{{ category.name }}</option>
                 {% endfor %}
             </select>
-            <input type="text" id="search-input" placeholder="検索キーワードを入力">
+            <input type="text" id="search-input" placeholder="Enter your question">
             <button id="search-button">検索</button>
         </div>
 
@@ -26,8 +26,13 @@
                 <div id="manual-results"></div>
                 <div id="faq-results"></div>
             </div>
-            <div id="ai-response">
-                <h2>AI Response</h2>
+            <div id="ai-responses">
+                <div id="first-ai-response">
+                    <h2>First AI Response</h2>
+                </div>
+                <div id="final-ai-response">
+                    <h2>Final AI Response</h2>
+                </div>
             </div>
         </div>
     </div>

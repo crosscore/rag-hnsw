@@ -81,12 +81,71 @@ def get_document_info(conn, document_table_id):
     """).format(sql.Identifier(DOCUMENT_TABLE)), (document_table_id,))
     return doc_info[0] if doc_info else (None, None)
 
-async def generate_ai_response(client, question, manual_texts, faq_texts, websocket: WebSocket):
+async def generate_first_ai_response(client, question, toc_data, websocket: WebSocket):
+    prompt_1st = f"""
+    ユーザーの質問に対して、以下の目次から最も関連が高いと考えられる目次とそのページ範囲を回答して下さい。
+
+    ユーザーの質問：
+    {question}
+
+    カテゴリに存在する全ての目次情報(toc_data):
+    {toc_data}
+
+    解答例：
+    マニュアルのタイトル: filename.pdf
+    マニュアルのページ番号(開始〜終了): p10〜p15
+    """
+
+    if ENABLE_OPENAI:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.7,
+            max_tokens=150,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt_1st}
+            ],
+            stream=True
+        )
+    else:
+        response = client.chat.completions.create(
+            model=MODEL_GPT4o_DEPLOY_NAME,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt_1st}
+            ],
+            stream=True
+        )
+
+    first_response = ""
+    try:
+        for chunk in response:
+            if chunk.choices and len(chunk.choices) > 0:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        first_response += content
+                        await websocket.send_json({"first_ai_response_chunk": content})
+            else:
+                logger.warning("Received an empty chunk from OpenAI API")
+    except Exception as e:
+        logger.error(f"Error processing AI response: {str(e)}")
+        await websocket.send_json({"error": "Error generating first AI response"})
+    finally:
+        await websocket.send_json({"first_ai_response_end": True})
+        logger.debug(f"Sent streaming first AI response for question: {question[:50]}...")
+
+    return first_response
+
+async def generate_ai_response(client, question, manual_texts, faq_texts, first_response, websocket: WebSocket):
     formatted_prompt = f"""
     ユーザーの質問に対して、参考文書を元に回答して下さい。
 
     ユーザーの質問：
     {question}
+
+    全参考文書の目次情報：
+    {first_response}
 
     参考文書(マニュアル)：
     {' '.join(manual_texts)}

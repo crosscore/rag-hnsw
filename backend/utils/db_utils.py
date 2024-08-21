@@ -81,3 +81,31 @@ def execute_search_query(conn, question_vector, category, top_n, table_name):
         results.extend(additional_results)
 
     return results[:top_n]
+
+def get_toc_data(conn, category):
+    try:
+        query = sql.SQL("""
+            SELECT xt.toc_data
+            FROM {xlsx_toc_table} xt
+            JOIN {document_table} dt ON xt.document_table_id = dt.id
+            JOIN {document_category_table} dct ON dt.id = dct.document_table_id
+            WHERE dct.business_category = %s
+        """).format(
+            xlsx_toc_table=sql.Identifier(XLSX_TOC_TABLE),
+            document_table=sql.Identifier(DOCUMENT_TABLE),
+            document_category_table=sql.Identifier(DOCUMENT_CATEGORY_TABLE)
+        )
+        
+        results = execute_query(conn, query, (category,))
+        
+        if not results:
+            logger.warning(f"No TOC data found for category: {category}")
+            return ""
+        
+        # 複数のTOC dataを結合
+        all_toc_data = "\n\n".join([result[0] for result in results])
+        
+        return all_toc_data
+    except Exception as e:
+        logger.error(f"Error fetching TOC data for category {category}: {e}")
+        return ""
