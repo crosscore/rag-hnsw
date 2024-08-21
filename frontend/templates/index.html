@@ -14,7 +14,7 @@
         <div class="search-container">
             <select id="category-select">
                 {% for category in categories %}
-                <option value="{{ category.value }}">{{ category.name }}</option>
+                <option value="{{ category.value }}">{{ category.value }}: {{ category.name }}</option>
                 {% endfor %}
             </select>
             <input type="text" id="search-input" placeholder="Enter your question">
