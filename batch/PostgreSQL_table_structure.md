@@ -7,8 +7,8 @@
 3. すべての日時は Asia/Tokyo（日本時間）のタイムゾーンで保存されます。
 4. SMALLINTは、PostgreSQLでは、int2と同等です。
 5. INTEGERは、PostgreSQLでは、int4と同等です。
-6. vector(3072)データ型は、pgvector拡張機能を使用しています。Dockerfileの設定により、事前に auroraコンテナのPostgreSQLにpgvector拡張機能がインストールされています。
-7. PDF_MANUAL_TABLE と PDF_FAQ_TABLEの embeddingカラムには、HNSWインデックスが作成されます。これは pgvector 拡張機能によって提供される近似最近傍探索インデックスです。
+6. vector(3072)データ型は、pgvector拡張機能を使用しています。Dockerfileの設定により、事前にauroraコンテナのPostgreSQLにpgvector拡張機能がインストールされています。
+7. PDF_MANUAL_TABLEとPDF_FAQ_TABLEのembeddingカラムには、HNSWインデックスが作成されます。これは pgvector拡張機能によって提供される近似最近傍探索インデックスです。
 8. すべての外部キー（document_table_id）は、DOCUMENT_TABLEのidカラムを参照しています。
 9. CHUNK_SIZEとCHUNK_OVERLAPの設定：
     - CHUNK_SIZE: 1000 (文字)
@@ -26,7 +26,7 @@
 15. XLSX_TOC_TABLE は、DOCUMENT_TABLEに保存されるPDF毎に存在する目次データを格納します。
 16. PDFとXLSXファイルの関連付けは、business_categoryでフィルタリングした後、file_nameカラムの文字列（例：test.pdf, test.xlsx）から拡張子を除いて行います。
 17. csv_to_aurora.pyとtoc_to_aurora.pyの両方で、PDFとXLSXファイルの関連付けのロジックを実装する必要があります。
-18. HNSWインデックスの作成は、PDF_MANUAL_TABLE と PDF_FAQ_TABLE の両方に必要です。toc_to_aurora.py ではベクトル化を行わないため、HNSWインデックスの作成は不要です。
+18. HNSWインデックスの作成は、PDF_MANUAL_TABLEとPDF_FAQ_TABLEの両方に必要です。toc_to_aurora.pyでは、ベクトル化を行わないため、HNSWインデックスの作成は不要です。
 19. ビジネスカテゴリは、config.pyで定義されたBUSINESS_CATEGORY_MAPPINGを使用して、文字列（例："新契約"）からSMALLINT（例：1）に変換されます。
 
 ## PDF と XLSX の関連付けクエリ例
