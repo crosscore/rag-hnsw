@@ -70,6 +70,10 @@ async def process_websocket_message(websocket: WebSocket, conn):
 
         logger.debug(f"Processing question: {question[:50]}... in category: {category}")
 
+        # 1回目のAI応答の生成（目次の検索）
+        toc_data = get_toc_data(conn, category)
+        first_ai_response = await generate_first_ai_response(client, question, toc_data, websocket, category)
+
         # 類似検索の処理
         question_vector = client.embeddings.create(
             input=question,
@@ -85,10 +89,6 @@ async def process_websocket_message(websocket: WebSocket, conn):
         await websocket.send_json({"faq_results": faq_results})
 
         logger.debug(f"Sent search results for question: {question[:50]}... in category: {category}")
-
-        # 1回目のAI応答の生成
-        toc_data = get_toc_data(conn, category)
-        first_ai_response = await generate_first_ai_response(client, question, toc_data, websocket, category)
 
         # 2回目（最終）のAI応答の生成
         if manual_texts or faq_texts:
