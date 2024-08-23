@@ -27,7 +27,26 @@ def create_pdf_range(file_path: str, start_page: int, end_page: int):
         logger.error(f"Error creating PDF range: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating PDF range: {str(e)}")
 
-def get_pdf(document_type: str, category: str, path: str, start_page: int = None, end_page: int = None):
+def create_single_page_pdf(file_path: str, page: int):
+    try:
+        pdf_reader = PdfReader(file_path)
+        pdf_writer = PdfWriter()
+
+        if 1 <= page <= len(pdf_reader.pages):
+            pdf_writer.add_page(pdf_reader.pages[page - 1])
+        else:
+            raise ValueError(f"Invalid page number: {page}")
+
+        pdf_bytes = BytesIO()
+        pdf_writer.write(pdf_bytes)
+        pdf_bytes.seek(0)
+
+        return pdf_bytes
+    except Exception as e:
+        logger.error(f"Error creating single page PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating single page PDF: {str(e)}")
+
+def get_pdf(document_type: str, category: str, path: str, page: int = None, start_page: int = None, end_page: int = None):
     if document_type == "manual":
         file_path = os.path.join(PDF_MANUAL_DIR, category, path)
     elif document_type == "faq":
@@ -42,10 +61,16 @@ def get_pdf(document_type: str, category: str, path: str, start_page: int = None
         raise HTTPException(status_code=404, detail=f"PDF file not found: {file_path}")
 
     try:
-        if start_page is not None and end_page is not None:
+        if page is not None:
+            logger.info(f"Extracting page {page} from PDF file: {file_path}")
+            pdf_bytes = create_single_page_pdf(file_path, page)
+            headers = {
+                "Content-Disposition": f'inline; filename*=UTF-8\'\'{quote(os.path.basename(path))}_page_{page}.pdf'
+            }
+            return StreamingResponse(pdf_bytes, media_type="application/pdf", headers=headers)
+        elif start_page is not None and end_page is not None:
             logger.info(f"Extracting pages {start_page} to {end_page} from PDF file: {file_path}")
             pdf_bytes = create_pdf_range(file_path, start_page, end_page)
-
             headers = {
                 "Content-Disposition": f'inline; filename*=UTF-8\'\'{quote(os.path.basename(path))}_pages_{start_page}-{end_page}.pdf'
             }
@@ -59,3 +84,4 @@ def get_pdf(document_type: str, category: str, path: str, start_page: int = None
     except Exception as e:
         logger.error(f"Error serving PDF file: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error serving PDF file: {str(e)}")
+    

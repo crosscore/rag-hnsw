@@ -1,4 +1,5 @@
 # rag-hnsw/frontend/main.py
+# rag-hnsw/frontend/main.py
 from fastapi import FastAPI, WebSocket, Request, WebSocketDisconnect, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -39,10 +40,12 @@ async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "categories": categories})
 
 @app.get("/pdf/{document_type}/{category}/{path:path}")
-async def stream_pdf(document_type: str, category: str, path: str, start_page: int = None, end_page: int = None):
+async def stream_pdf(document_type: str, category: str, path: str, page: int = None, start_page: int = None, end_page: int = None):
     decoded_path = unquote(path)
     url = f"{BACKEND_HTTP_URL}/pdf/{document_type}/{category}/{quote(decoded_path)}"
     params = {}
+    if page is not None:
+        params['page'] = page
     if start_page is not None:
         params['start_page'] = start_page
     if end_page is not None:
