@@ -101,9 +101,10 @@ def get_document_info(conn, document_table_id):
     """).format(sql.Identifier(DOCUMENT_TABLE)), (document_table_id,))
     return doc_info[0] if doc_info else (None, None)
 
-async def generate_first_ai_response(client, question, toc_data, websocket: WebSocket):
+async def generate_first_ai_response(client, question, toc_data, websocket: WebSocket, category):
     prompt_1st = f"""
     ユーザーの質問に対して、最も関連が高いと考えられる"PDFファイル名", "PDF開始ページ", "PDF終了ページ"を以下の目次情報を参考に、上位2件分を解答例の通りに適切に改行して回答して下さい。
+    ただし、上位2件の内容は必ず同じ内容を重複して解答しないようにして下さい。
 
     ユーザーの質問：
     {question}
@@ -159,6 +160,9 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
         logger.debug(f"Sent streaming first AI response for question: {question[:50]}...")
 
     pdf_info = parse_first_response(first_response)
+    category_name = next((name for name, value in BUSINESS_CATEGORY_MAPPING.items() if value == category), None)
+    for pdf in pdf_info:
+        pdf['category'] = category_name
     await websocket.send_json({"pdf_info": pdf_info})
 
     return first_response

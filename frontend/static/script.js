@@ -34,6 +34,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (responseP) {
                     responseP.innerHTML += "<br><em>(First response complete)</em>";
                 }
+            } else if (data.pdf_info) {
+                displayPdfInfo(data.pdf_info);
             } else if (data.ai_response_chunk) {
                 var responseP = finalAiResponse.querySelector("p") || finalAiResponse.appendChild(document.createElement("p"));
                 responseP.innerHTML += data.ai_response_chunk;
@@ -69,10 +71,10 @@ document.addEventListener("DOMContentLoaded", function() {
     function displayPdfInfo(pdfInfo) {
         var pdfInfoHTML = "<h2>Recommended PDF Pages</h2>";
         pdfInfoHTML += pdfInfo.map((pdf, index) => {
-            var link = `pdf/manual/${encodeURIComponent(categorySelect.options[categorySelect.selectedIndex].text)}/${encodeURIComponent(pdf.file_name)}?start_page=${pdf.start_page}&end_page=${pdf.end_page}`;
+            var link = `pdf/manual/${encodeURIComponent(pdf.category)}/${encodeURIComponent(pdf.file_name)}?start_page=${pdf.start_page}&end_page=${pdf.end_page}`;
             return `
                 <div class="pdf-info">
-                    <h3>${index + 1}. <a href="${link}" target="_blank">${pdf.file_name} (Pages ${pdf.start_page}-${pdf.end_page})</a></h3>
+                    <h3>${index + 1}. <a href="${link}" target="_blank">/manual/${pdf.category}/${pdf.file_name}, p.${pdf.start_page}-p.${pdf.end_page}</a></h3>
                 </div>
             `;
         }).join('');
