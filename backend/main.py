@@ -33,8 +33,8 @@ async def get_categories():
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/pdf/{document_type}/{category}/{path:path}")
-async def serve_pdf(document_type: str, category: str, path: str, page: int = None):
-    return get_pdf(document_type, category, path, page)
+async def serve_pdf(document_type: str, category: str, path: str, start_page: int = None, end_page: int = None):
+    return get_pdf(document_type, category, path, start_page, end_page)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

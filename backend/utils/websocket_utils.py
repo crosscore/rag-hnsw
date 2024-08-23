@@ -18,6 +18,26 @@ def get_openai_client():
             api_version=AZURE_OPENAI_API_VERSION
         )
 
+def parse_first_response(first_response):
+    pdf_info = []
+    lines = first_response.strip().split('\n')
+    current_pdf = {}
+
+    for line in lines:
+        if line.startswith("PDFファイル名:"):
+            if current_pdf:
+                pdf_info.append(current_pdf)
+            current_pdf = {"file_name": line.split(":")[1].strip()}
+        elif line.startswith("PDF開始ページ:"):
+            current_pdf["start_page"] = int(line.split(":")[1].strip())
+        elif line.startswith("PDF終了ページ:"):
+            current_pdf["end_page"] = int(line.split(":")[1].strip())
+
+    if current_pdf:
+        pdf_info.append(current_pdf)
+
+    return pdf_info
+
 async def process_search_results(conn, question_vector, category, top_n):
     manual_results = execute_search_query(conn, question_vector, category, top_n, PDF_MANUAL_TABLE)
     faq_results = execute_search_query(conn, question_vector, category, top_n, PDF_FAQ_TABLE)
@@ -104,8 +124,6 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
     if ENABLE_OPENAI:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            temperature=0.7,
-            max_tokens=150,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt_1st}
@@ -140,6 +158,9 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
         await websocket.send_json({"first_ai_response_end": True})
         logger.debug(f"Sent streaming first AI response for question: {question[:50]}...")
 
+    pdf_info = parse_first_response(first_response)
+    await websocket.send_json({"pdf_info": pdf_info})
+
     return first_response
 
 async def generate_ai_response(client, question, manual_texts, faq_texts, first_response, websocket: WebSocket):
@@ -149,7 +170,7 @@ async def generate_ai_response(client, question, manual_texts, faq_texts, first_
     ユーザーの質問：
     {question}
 
-    全参考文書の目次情報：
+    参考文書の目次情報：
     {first_response}
 
     参考文書(マニュアル)：

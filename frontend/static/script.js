@@ -66,6 +66,19 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
+    function displayPdfInfo(pdfInfo) {
+        var pdfInfoHTML = "<h2>Recommended PDF Pages</h2>";
+        pdfInfoHTML += pdfInfo.map((pdf, index) => {
+            var link = `pdf/manual/${encodeURIComponent(categorySelect.options[categorySelect.selectedIndex].text)}/${encodeURIComponent(pdf.file_name)}?start_page=${pdf.start_page}&end_page=${pdf.end_page}`;
+            return `
+                <div class="pdf-info">
+                    <h3>${index + 1}. <a href="${link}" target="_blank">${pdf.file_name} (Pages ${pdf.start_page}-${pdf.end_page})</a></h3>
+                </div>
+            `;
+        }).join('');
+        firstAiResponse.innerHTML += pdfInfoHTML;
+    }
+
     function displayResults(results, title) {
         var resultsHTML = "<h2>" + title + "</h2>";
         if (results && results.length > 0) {

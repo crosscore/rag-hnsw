@@ -39,16 +39,20 @@ async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "categories": categories})
 
 @app.get("/pdf/{document_type}/{category}/{path:path}")
-async def stream_pdf(document_type: str, category: str, path: str, page: int = None):
+async def stream_pdf(document_type: str, category: str, path: str, start_page: int = None, end_page: int = None):
     decoded_path = unquote(path)
     url = f"{BACKEND_HTTP_URL}/pdf/{document_type}/{category}/{quote(decoded_path)}"
-    if page is not None:
-        url += f"?page={page}"
+    params = {}
+    if start_page is not None:
+        params['start_page'] = start_page
+    if end_page is not None:
+        params['end_page'] = end_page
+
     logger.info(f"Proxying PDF from backend: {url}")
 
     async def stream_response():
         async with httpx.AsyncClient() as client:
-            async with client.stream('GET', url) as response:
+            async with client.stream('GET', url, params=params) as response:
                 if response.status_code == 200:
                     async for chunk in response.aiter_bytes():
                         yield chunk
