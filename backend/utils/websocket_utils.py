@@ -83,17 +83,22 @@ def get_document_info(conn, document_table_id):
 
 async def generate_first_ai_response(client, question, toc_data, websocket: WebSocket):
     prompt_1st = f"""
-    ユーザーの質問に対して、以下の目次から最も関連が高いと考えられる目次とそのページ範囲を回答して下さい。
+    ユーザーの質問に対して、最も関連が高いと考えられる"PDFファイル名", "PDF開始ページ", "PDF終了ページ"を以下の目次情報を参考に、上位2件分を解答例の通りに適切に改行して回答して下さい。
 
     ユーザーの質問：
     {question}
 
-    カテゴリに存在する全ての目次情報(toc_data):
+    カテゴリに存在する全PDFファイルの目次情報:
     {toc_data}
 
     解答例：
-    マニュアルのタイトル: filename.pdf
-    マニュアルのページ番号(開始〜終了): p10〜p15
+    PDFファイル名: filename1.pdf
+    PDF開始ページ: 10
+    PDF終了ページ: 15
+
+    PDFファイル名: filename2.pdf
+    PDF開始ページ: 5
+    PDF終了ページ: 7
     """
 
     if ENABLE_OPENAI:
@@ -138,7 +143,7 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
     return first_response
 
 async def generate_ai_response(client, question, manual_texts, faq_texts, first_response, websocket: WebSocket):
-    formatted_prompt = f"""
+    prompt_2nd = f"""
     ユーザーの質問に対して、参考文書を元に回答して下さい。
 
     ユーザーの質問：
@@ -161,7 +166,7 @@ async def generate_ai_response(client, question, manual_texts, faq_texts, first_
             max_tokens=50,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": formatted_prompt}
+                {"role": "user", "content": prompt_2nd}
             ],
             stream=True
         )
@@ -170,7 +175,7 @@ async def generate_ai_response(client, question, manual_texts, faq_texts, first_
             model=MODEL_GPT4o_DEPLOY_NAME,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": formatted_prompt}
+                {"role": "user", "content": prompt_2nd}
             ],
             stream=True
         )
