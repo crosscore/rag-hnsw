@@ -8,7 +8,7 @@ from utils.db_utils import get_db_connection, get_available_categories, get_toc_
 from utils.websocket_utils import get_openai_client, process_search_results, generate_ai_response, generate_first_ai_response
 from config import *
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
