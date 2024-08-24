@@ -62,7 +62,6 @@ async def process_websocket_message(websocket: WebSocket, conn):
         data = await websocket.receive_json()
         question = data["question"]
         category = data.get("category")
-        top_n = int(data.get("top_n", 20))
 
         if not category:
             await websocket.send_json({"error": "Category is required"})
@@ -80,13 +79,13 @@ async def process_websocket_message(websocket: WebSocket, conn):
             model=AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT
         ).data[0].embedding
 
-        manual_results, faq_results, manual_texts, faq_texts = await process_search_results(conn, question_vector, category, top_n, excluded_pages)
+        manual_results, faq_results, manual_texts, faq_texts = await process_search_results(conn, question_vector, category, excluded_pages)
 
-        logger.debug(f"Manual results: {manual_results}")
-        logger.debug(f"FAQ results: {faq_results}")
-
-        await websocket.send_json({"manual_results": manual_results})
-        await websocket.send_json({"faq_results": faq_results})
+        if not manual_results and not faq_results:
+            await websocket.send_json({"warning": "検索結果が見つかりませんでした。"})
+        else:
+            await websocket.send_json({"manual_results": manual_results})
+            await websocket.send_json({"faq_results": faq_results})
 
         logger.debug(f"Sent search results for question: {question[:50]}... in category: {category}")
 
@@ -98,9 +97,6 @@ async def process_websocket_message(websocket: WebSocket, conn):
             await websocket.send_json({"ai_response_end": True})
             logger.info("No relevant information found for the query")
 
-    except WebSocketDisconnect:
-        logger.info("WebSocket disconnected during message processing")
-        raise
     except Exception as e:
         logger.error(f"Error processing message: {str(e)}")
         if websocket.client_state == WebSocketState.CONNECTED:

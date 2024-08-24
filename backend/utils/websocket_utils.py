@@ -35,30 +35,44 @@ def parse_first_response(first_response):
 
     return pdf_info
 
-async def process_search_results(conn, question_vector, category, top_n, excluded_pages):
-    manual_results = execute_search_query(conn, question_vector, category, 20, PDF_MANUAL_TABLE)
-    faq_results = execute_search_query(conn, question_vector, category, top_n, PDF_FAQ_TABLE)
+async def process_search_results(conn, question_vector, category, excluded_pages):
+    manual_results = execute_search_query(conn, question_vector, category, 50, PDF_MANUAL_TABLE)
+    faq_results = execute_search_query(conn, question_vector, category, 50, PDF_FAQ_TABLE)
 
     formatted_manual_results = []
     formatted_faq_results = []
     manual_texts = []
     faq_texts = []
+    unique_manual_pages = set()
+    unique_faq_entries = set()
 
     for result in manual_results:
         formatted_result = format_manual_result(conn, result, category)
-        if not is_excluded(formatted_result, excluded_pages):
+        page_key = (formatted_result['file_name'], formatted_result['page'])
+        if not is_excluded(formatted_result, excluded_pages) and page_key not in unique_manual_pages:
             formatted_manual_results.append(formatted_result)
             manual_texts.append(formatted_result['chunk_text'])
+            unique_manual_pages.add(page_key)
+            if len(formatted_manual_results) == 4:
+                break
 
     for result in faq_results:
         formatted_result = format_faq_result(conn, result, category)
-        formatted_faq_results.append(formatted_result)
-        faq_texts.append(formatted_result['chunk_text'])
+        logger.debug(f"Formatted FAQ result: {formatted_result}")
+        entry_key = (formatted_result['file_name'], formatted_result['page'], formatted_result['faq_no'])
+        if entry_key not in unique_faq_entries:
+            formatted_faq_results.append(formatted_result)
+            faq_texts.append(formatted_result['chunk_text'])
+            unique_faq_entries.add(entry_key)
+            if len(formatted_faq_results) == 3:
+                break
 
     formatted_manual_results.sort(key=lambda x: x['distance'])
     formatted_faq_results.sort(key=lambda x: x['distance'])
 
-    return formatted_manual_results[:4], formatted_faq_results[:3], manual_texts, faq_texts
+    logger.info(f"Found {len(formatted_manual_results)} unique manual results and {len(formatted_faq_results)} unique FAQ results")
+
+    return formatted_manual_results, formatted_faq_results, manual_texts, faq_texts
 
 def is_excluded(result, excluded_pages):
     for excluded in excluded_pages:
