@@ -24,18 +24,26 @@ def process_csv_file(file_path, cursor, table_name, document_type):
     business_category = get_business_category(file_path, CSV_MANUAL_DIR if document_type == 'manual' else CSV_FAQ_DIR)
     document_table_id = process_file_common(cursor, df['file_path'].iloc[0], file_name, DOCUMENT_TYPE_PDF_MANUAL if document_type == 'manual' else DOCUMENT_TYPE_PDF_FAQ, checksum, created_date_time, business_category)
 
-    # Insert into PDF_MANUAL_TABLE or PDF_FAQ_TABLE
+    # Insert into PDF_MANUAL_TABLE or PDF_FAQ_TABLE with UPSERT
     if table_name == PDF_MANUAL_TABLE:
         insert_query = sql.SQL("""
         INSERT INTO {}
         (id, document_table_id, chunk_no, document_page, chunk_text, embedding, created_date_time)
-        VALUES (%s, %s, %s, %s, %s, %s::vector(3072), %s);
+        VALUES (%s, %s, %s, %s, %s, %s::vector(3072), %s)
+        ON CONFLICT (document_table_id, chunk_no, document_page) DO UPDATE SET
+        chunk_text = EXCLUDED.chunk_text,
+        embedding = EXCLUDED.embedding,
+        created_date_time = EXCLUDED.created_date_time;
         """).format(sql.Identifier(table_name))
     else:  # PDF_FAQ_TABLE
         insert_query = sql.SQL("""
         INSERT INTO {}
         (id, document_table_id, document_page, faq_no, chunk_text, embedding, created_date_time)
-        VALUES (%s, %s, %s, %s, %s, %s::vector(3072), %s);
+        VALUES (%s, %s, %s, %s, %s, %s::vector(3072), %s)
+        ON CONFLICT (document_table_id, document_page, faq_no) DO UPDATE SET
+        chunk_text = EXCLUDED.chunk_text,
+        embedding = EXCLUDED.embedding,
+        created_date_time = EXCLUDED.created_date_time;
         """).format(sql.Identifier(table_name))
 
     data = []
@@ -72,9 +80,9 @@ def process_csv_file(file_path, cursor, table_name, document_type):
 
     try:
         cursor.executemany(insert_query, data)
-        logger.info(f"Inserted {len(data)} rows into the {table_name} table from {file_path}")
+        logger.info(f"Inserted/Updated {len(data)} rows into the {table_name} table from {file_path}")
     except Exception as e:
-        logger.error(f"Error inserting batch into {table_name} from {file_path}: {e}")
+        logger.error(f"Error inserting/updating batch into {table_name} from {file_path}: {e}")
         raise
 
 def process_directory(cursor, directory, table_name, document_type):
@@ -108,7 +116,7 @@ def process_csv_files():
                     process_directory(cursor, CSV_FAQ_DIR, PDF_FAQ_TABLE, "faq")
 
                     conn.commit()
-                    logger.info("All CSV files have been processed and inserted into the database.")
+                    logger.info("All CSV files have been processed and inserted/updated in the database.")
                 except Exception as e:
                     conn.rollback()
                     logger.error(f"Transaction rolled back due to error: {e}")

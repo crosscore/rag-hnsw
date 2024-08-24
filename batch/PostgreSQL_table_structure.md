@@ -28,7 +28,6 @@
 17. csv_to_aurora.pyとtoc_to_aurora.pyの両方で、PDFとXLSXファイルの関連付けのロジックを実装する必要があります。
 18. HNSWインデックスの作成は、PDF_MANUAL_TABLEとPDF_FAQ_TABLEの両方に必要です。toc_to_aurora.pyでは、ベクトル化を行わないため、HNSWインデックスの作成は不要です。
 19. ビジネスカテゴリは、config.pyで定義されたBUSINESS_CATEGORY_MAPPINGを使用して、文字列（例："新契約"）からSMALLINT（例：1）に変換されます。
-20. PDF_MANUAL_TABLEとPDF_FAQ_TABLEには、重複データの挿入を防ぐためのUNIQUE制約が追加されています。
 
 ## PDF と XLSX の関連付けクエリ例
 
@@ -78,7 +77,6 @@ WHERE c.business_category = [指定のカテゴリ]
 -   chunk_text: text NOT NULL, チャンク毎のテキスト
 -   embedding: vector(3072) NOT NULL, chunk_text のベクトルデータ
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
--   UNIQUE(document_table_id, chunk_no, document_page)
 
 ## PDF_FAQ_TABLE (PDF FAQ情報テーブル)
 
@@ -89,7 +87,6 @@ WHERE c.business_category = [指定のカテゴリ]
 -   chunk_text: text NOT NULL, ページ毎のテキスト (preprocess_faq_text 関数が返却する processed_text の文字列)
 -   embedding: vector(3072) NOT NULL, chunk_text のベクトルデータ
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
--   UNIQUE(document_table_id, document_page, faq_no)
 
 ## テーブル作成クエリ
 
@@ -134,27 +131,27 @@ UNIQUE(document_table_id, file_name)
 ### PDF_MANUAL_TABLE
 
 CREATE TABLE IF NOT EXISTS {PDF_MANUAL_TABLE} (
-id UUID PRIMARY KEY,
-document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
-chunk_no INTEGER NOT NULL,
-document_page SMALLINT NOT NULL,
-chunk_text TEXT NOT NULL,
-embedding VECTOR(3072) NOT NULL,
-created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-UNIQUE(document_table_id, chunk_no, document_page)
+    id UUID PRIMARY KEY,
+    document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
+    chunk_no INTEGER NOT NULL,
+    document_page SMALLINT NOT NULL,
+    chunk_text TEXT NOT NULL,
+    embedding VECTOR(3072) NOT NULL,
+    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    UNIQUE(document_table_id, chunk_no, document_page)
 );
 
 ### PDF_FAQ_TABLE
 
 CREATE TABLE IF NOT EXISTS {PDF_FAQ_TABLE} (
-id UUID PRIMARY KEY,
-document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
-document_page INTEGER NOT NULL,
-faq_no SMALLINT NOT NULL,
-chunk_text TEXT NOT NULL,
-embedding VECTOR(3072) NOT NULL,
-created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-UNIQUE(document_table_id, document_page, faq_no)
+    id UUID PRIMARY KEY,
+    document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
+    document_page INTEGER NOT NULL,
+    faq_no SMALLINT NOT NULL,
+    chunk_text TEXT NOT NULL,
+    embedding VECTOR(3072) NOT NULL,
+    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    UNIQUE(document_table_id, document_page, faq_no)
 );
 
 ### HNSW インデックスの作成
