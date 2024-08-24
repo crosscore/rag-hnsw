@@ -1,4 +1,4 @@
-/* rag-hnsw/frontend/static/script.js */
+/* frontend/static/script.js */
 
 document.addEventListener("DOMContentLoaded", function() {
     var searchInput = document.getElementById("search-input");
@@ -22,10 +22,10 @@ document.addEventListener("DOMContentLoaded", function() {
                 searchResults.innerHTML += "<p>Error: " + data.error + "</p>";
             } else if (data.manual_results) {
                 console.log("Displaying manual results:", data.manual_results);
-                displayResults(data.manual_results, "Manual Search Results");
+                displayResults(data.manual_results, "Manual Search Results", 4);
             } else if (data.faq_results) {
                 console.log("Displaying FAQ results:", data.faq_results);
-                displayResults(data.faq_results, "FAQ Search Results");
+                displayResults(data.faq_results, "FAQ Search Results", 3);
             } else if (data.first_ai_response_chunk) {
                 var responseP = firstAiResponse.querySelector("p") || firstAiResponse.appendChild(document.createElement("p"));
                 responseP.innerHTML += data.first_ai_response_chunk;
@@ -81,10 +81,10 @@ document.addEventListener("DOMContentLoaded", function() {
         firstAiResponse.innerHTML += pdfInfoHTML;
     }
 
-    function displayResults(results, title) {
+    function displayResults(results, title, maxResults) {
         var resultsHTML = "<h2>" + title + "</h2>";
         if (results && results.length > 0) {
-            resultsHTML += generateResultsHTML(results, title.toLowerCase().includes("manual") ? "manual" : "faq");
+            resultsHTML += generateResultsHTML(results.slice(0, maxResults), title.toLowerCase().includes("manual") ? "manual" : "faq");
         } else {
             resultsHTML += "<p>No results found.</p>";
         }

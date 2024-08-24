@@ -1,4 +1,4 @@
-# rag-hnsw/backend/main.py
+# backend/main.py
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
@@ -62,7 +62,7 @@ async def process_websocket_message(websocket: WebSocket, conn):
         data = await websocket.receive_json()
         question = data["question"]
         category = data.get("category")
-        top_n = int(data.get("top_n", 3))
+        top_n = int(data.get("top_n", 20))
 
         if not category:
             await websocket.send_json({"error": "Category is required"})
@@ -72,7 +72,7 @@ async def process_websocket_message(websocket: WebSocket, conn):
 
         # 1回目のAI応答の生成（目次の検索）
         toc_data = get_toc_data(conn, category)
-        first_ai_response = await generate_first_ai_response(client, question, toc_data, websocket, category)
+        first_ai_response, excluded_pages = await generate_first_ai_response(client, question, toc_data, websocket, category)
 
         # 類似検索の処理
         question_vector = client.embeddings.create(
@@ -80,7 +80,7 @@ async def process_websocket_message(websocket: WebSocket, conn):
             model="text-embedding-3-large" if ENABLE_OPENAI else AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT
         ).data[0].embedding
 
-        manual_results, faq_results, manual_texts, faq_texts = await process_search_results(conn, question_vector, category, top_n)
+        manual_results, faq_results, manual_texts, faq_texts = await process_search_results(conn, question_vector, category, top_n, excluded_pages)
 
         logger.debug(f"Manual results: {manual_results}")
         logger.debug(f"FAQ results: {faq_results}")

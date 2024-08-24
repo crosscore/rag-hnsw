@@ -1,4 +1,4 @@
-# rag-hnsw/aurora/Dockerfile
+# aurora/Dockerfile
 
 FROM postgres:latest
 

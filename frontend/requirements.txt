@@ -1,4 +1,4 @@
-# rag-hnsw/frontend/requirements.txt
+# frontend/requirements.txt
 fastapi
 uvicorn
 jinja2

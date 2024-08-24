@@ -1,4 +1,4 @@
-# rag-hnsw/batch/vectorizer.py
+# batch/vectorizer.py
 import os
 import pandas as pd
 from pypdf import PdfReader

@@ -1,4 +1,4 @@
-# rag-hnsw/docker-compose.yml
+# docker-compose.yml
 
 services:
     frontend:

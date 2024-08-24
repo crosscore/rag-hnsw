@@ -38,8 +38,8 @@ def parse_first_response(first_response):
 
     return pdf_info
 
-async def process_search_results(conn, question_vector, category, top_n):
-    manual_results = execute_search_query(conn, question_vector, category, top_n, PDF_MANUAL_TABLE)
+async def process_search_results(conn, question_vector, category, top_n, excluded_pages):
+    manual_results = execute_search_query(conn, question_vector, category, 20, PDF_MANUAL_TABLE)
     faq_results = execute_search_query(conn, question_vector, category, top_n, PDF_FAQ_TABLE)
 
     formatted_manual_results = []
@@ -49,8 +49,9 @@ async def process_search_results(conn, question_vector, category, top_n):
 
     for result in manual_results:
         formatted_result = format_manual_result(conn, result, category)
-        formatted_manual_results.append(formatted_result)
-        manual_texts.append(formatted_result['chunk_text'])
+        if not is_excluded(formatted_result, excluded_pages):
+            formatted_manual_results.append(formatted_result)
+            manual_texts.append(formatted_result['chunk_text'])
 
     for result in faq_results:
         formatted_result = format_faq_result(conn, result, category)
@@ -60,7 +61,14 @@ async def process_search_results(conn, question_vector, category, top_n):
     formatted_manual_results.sort(key=lambda x: x['distance'])
     formatted_faq_results.sort(key=lambda x: x['distance'])
 
-    return formatted_manual_results[:top_n], formatted_faq_results[:top_n], manual_texts, faq_texts
+    return formatted_manual_results[:4], formatted_faq_results[:3], manual_texts, faq_texts
+
+def is_excluded(result, excluded_pages):
+    for excluded in excluded_pages:
+        if (result['file_name'] == excluded['file_name'] and
+            excluded['start_page'] <= result['page'] <= excluded['end_page']):
+            return True
+    return False
 
 def format_manual_result(conn, result, category):
     document_table_id, chunk_no, document_page, chunk_text, distance = result
@@ -165,7 +173,7 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
         pdf['category'] = category_name
     await websocket.send_json({"pdf_info": pdf_info})
 
-    return first_response
+    return first_response, pdf_info
 
 async def generate_ai_response(client, question, manual_texts, faq_texts, first_response, websocket: WebSocket):
     prompt_2nd = f"""

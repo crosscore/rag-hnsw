@@ -1,4 +1,4 @@
-# /rag-hnsw/batch/src/utils.py
+# batch/src/utils.py
 import os
 import logging
 from contextlib import contextmanager
