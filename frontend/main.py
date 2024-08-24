@@ -1,4 +1,5 @@
-# frontend/main.py
+# rag-hnsw/frontend/main.py
+# rag-hnsw/frontend/main.py
 from fastapi import FastAPI, WebSocket, Request, WebSocketDisconnect, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles

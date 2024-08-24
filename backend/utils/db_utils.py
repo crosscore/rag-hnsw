@@ -1,4 +1,4 @@
-# backend/utils/db_utils.py
+# rag-hnsw/backend/utils/db_utils.py
 import psycopg_pool
 from psycopg import sql
 import logging

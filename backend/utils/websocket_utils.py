@@ -9,14 +9,11 @@ from config import *
 logger = logging.getLogger(__name__)
 
 def get_openai_client():
-    if ENABLE_OPENAI:
-        return OpenAI(api_key=OPENAI_API_KEY)
-    else:
-        return AzureOpenAI(
-            azure_endpoint=AZURE_OPENAI_ENDPOINT,
-            api_key=AZURE_OPENAI_API_KEY,
-            api_version=AZURE_OPENAI_API_VERSION
-        )
+    return AzureOpenAI(
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        api_key=AZURE_OPENAI_API_KEY,
+        api_version=AZURE_OPENAI_API_VERSION
+    )
 
 def parse_first_response(first_response):
     pdf_info = []
@@ -130,24 +127,14 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
     PDF終了ページ: 7
     """
 
-    if ENABLE_OPENAI:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt_1st}
-            ],
-            stream=True
-        )
-    else:
-        response = client.chat.completions.create(
-            model=MODEL_GPT4o_DEPLOY_NAME,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt_1st}
-            ],
-            stream=True
-        )
+    response = client.chat.completions.create(
+        model=MODEL_GPT4o_DEPLOY_NAME,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt_1st}
+        ],
+        stream=True
+    )
 
     first_response = ""
     try:
@@ -177,12 +164,12 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
 
 async def generate_ai_response(client, question, manual_texts, faq_texts, first_response, websocket: WebSocket):
     prompt_2nd = f"""
-    ユーザーの質問に対して、参考文書を元に回答して下さい。
+    ユーザーの質問に対して、以下の参考文書を元に回答して下さい。
 
     ユーザーの質問：
     {question}
 
-    参考文書の目次情報：
+    参考文書(目次情報)：
     {first_response}
 
     参考文書(マニュアル)：
@@ -192,26 +179,14 @@ async def generate_ai_response(client, question, manual_texts, faq_texts, first_
     {' '.join(faq_texts)}
     """
 
-    if ENABLE_OPENAI:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=1.00,
-            max_tokens=50,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt_2nd}
-            ],
-            stream=True
-        )
-    else:
-        response = client.chat.completions.create(
-            model=MODEL_GPT4o_DEPLOY_NAME,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt_2nd}
-            ],
-            stream=True
-        )
+    response = client.chat.completions.create(
+        model=MODEL_GPT4o_DEPLOY_NAME,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt_2nd}
+        ],
+        stream=True
+    )
 
     try:
         for chunk in response:

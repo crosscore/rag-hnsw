@@ -1,4 +1,4 @@
-# batch/vectorizer.py
+# rag-hnsw/batch/vectorizer.py
 import os
 import pandas as pd
 from pypdf import PdfReader
@@ -12,16 +12,12 @@ from config import *
 logger = setup_logging("vectorizer")
 
 def initialize_openai_client():
-    if ENABLE_OPENAI:
-        client = OpenAI(api_key=OPENAI_API_KEY)
-        logger.info("Using OpenAI API for embeddings")
-    else:
-        client = AzureOpenAI(
-            azure_endpoint=AZURE_OPENAI_ENDPOINT,
-            api_key=AZURE_OPENAI_API_KEY,
-            api_version=AZURE_OPENAI_API_VERSION
-        )
-        logger.info("Using Azure OpenAI API for embeddings")
+    client = AzureOpenAI(
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        api_key=AZURE_OPENAI_API_KEY,
+        api_version=AZURE_OPENAI_API_VERSION
+    )
+    logger.info("Using Azure OpenAI API for embeddings")
     return client
 
 client = initialize_openai_client()
@@ -55,16 +51,10 @@ def extract_text_from_pdf(file_path):
 
 def create_embedding(text):
     try:
-        if ENABLE_OPENAI:
-            response = client.embeddings.create(
-                input=text,
-                model="text-embedding-3-large"
-            )
-        else:
-            response = client.embeddings.create(
-                input=text,
-                model=AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT
-            )
+        response = client.embeddings.create(
+            input=text,
+            model=AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT
+        )
         logger.debug(f"Created embedding for text of length {len(text)}")
         return response
     except Exception as e:

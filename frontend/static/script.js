@@ -1,4 +1,4 @@
-/* frontend/static/script.js */
+/* rag-hnsw/frontend/static/script.js */
 
 document.addEventListener("DOMContentLoaded", function() {
     var searchInput = document.getElementById("search-input");

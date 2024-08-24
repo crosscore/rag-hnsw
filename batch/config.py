@@ -1,12 +1,8 @@
-# batch/config.py
+# rag-hnsw/batch/config.py
 import os
 import json
 from dotenv import load_dotenv
 load_dotenv()
-
-# OpenAI
-ENABLE_OPENAI = os.getenv("ENABLE_OPENAI").lower() == "true"
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Azure OpenAI
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
@@ -14,7 +10,7 @@ AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
 AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT")
 AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
-MODEL_GPT4o_DEPLOY_NAME = os.getenv("MODEL_GPT4o_DEPLOY_NAME", "gpt40o_20240705")
+MODEL_GPT4o_DEPLOY_NAME = os.getenv("MODEL_GPT4o_DEPLOY_NAME")
 
 # AWS credentials and region
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")

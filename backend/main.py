@@ -1,4 +1,4 @@
-# backend/main.py
+# rag-hnsw/backend/main.py
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
@@ -77,7 +77,7 @@ async def process_websocket_message(websocket: WebSocket, conn):
         # 類似検索の処理
         question_vector = client.embeddings.create(
             input=question,
-            model="text-embedding-3-large" if ENABLE_OPENAI else AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT
+            model=AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT
         ).data[0].embedding
 
         manual_results, faq_results, manual_texts, faq_texts = await process_search_results(conn, question_vector, category, top_n, excluded_pages)
