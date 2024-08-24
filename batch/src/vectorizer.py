@@ -1,8 +1,8 @@
-# rag-hnsw/batch/vectorizer.py
+# batch/vectorizer.py
 import os
 import pandas as pd
 from pypdf import PdfReader
-from openai import AzureOpenAI, OpenAI
+from openai import AzureOpenAI
 import traceback
 import re
 from langchain_text_splitters import CharacterTextSplitter

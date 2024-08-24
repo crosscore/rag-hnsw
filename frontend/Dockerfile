@@ -1,4 +1,4 @@
-# rag-hnsw/frontend/Dockerfile
+# frontend/Dockerfile
 
 FROM python:3.11-slim
 

@@ -1,4 +1,4 @@
-# rag-hnsw/batch/src/drop_table.py
+# batch/src/drop_table.py
 import psycopg
 from psycopg import sql
 import logging

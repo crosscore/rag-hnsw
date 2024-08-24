@@ -1,9 +1,9 @@
 # backend/utils/websocket_utils.py
 from fastapi import WebSocket
-from openai import OpenAI, AzureOpenAI
+from openai import AzureOpenAI
 from psycopg import sql
 import logging
-from .db_utils import execute_query, execute_search_query
+from .db_utils import execute_query, execute_search_query, get_document_id, get_chunk_text_for_pages
 from config import *
 
 logger = logging.getLogger(__name__)
@@ -106,7 +106,7 @@ def get_document_info(conn, document_table_id):
     """).format(sql.Identifier(DOCUMENT_TABLE)), (document_table_id,))
     return doc_info[0] if doc_info else (None, None)
 
-async def generate_first_ai_response(client, question, toc_data, websocket: WebSocket, category):
+async def generate_first_ai_response(client, question, toc_data, websocket: WebSocket, category, conn):
     prompt_1st = f"""
     ユーザーの質問に対して、最も関連が高いと考えられる"PDFファイル名", "PDF開始ページ", "PDF終了ページ"を以下の目次情報を参考に、上位2件分を解答例の通りに適切に改行して回答して下さい。
     ただし、上位2件の内容は必ず同じ内容を重複して解答しないようにして下さい。
@@ -156,13 +156,27 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
 
     pdf_info = parse_first_response(first_response)
     category_name = next((name for name, value in BUSINESS_CATEGORY_MAPPING.items() if value == category), None)
+    
+    chunk_texts = []
+    excluded_pages = []
     for pdf in pdf_info:
         pdf['category'] = category_name
+        # ドキュメントIDを取得
+        doc_id = get_document_id(conn, pdf['file_name'], category)
+        if doc_id:
+            chunk_text = get_chunk_text_for_pages(conn, doc_id, pdf['start_page'], pdf['end_page'])
+            chunk_texts.append(chunk_text)
+        excluded_pages.append({
+            'file_name': pdf['file_name'],
+            'start_page': pdf['start_page'],
+            'end_page': pdf['end_page']
+        })
+    
     await websocket.send_json({"pdf_info": pdf_info})
 
-    return first_response, pdf_info
+    return first_response, pdf_info, chunk_texts, excluded_pages
 
-async def generate_ai_response(client, question, manual_texts, faq_texts, first_response, websocket: WebSocket):
+async def generate_ai_response(client, question, chunk_texts, manual_texts, faq_texts, websocket: WebSocket):
     prompt_2nd = f"""
     ユーザーの質問に対して、以下の参考文書を元に回答して下さい。
 
@@ -170,7 +184,7 @@ async def generate_ai_response(client, question, manual_texts, faq_texts, first_
     {question}
 
     参考文書(目次情報)：
-    {first_response}
+    {' '.join(chunk_texts)}
 
     参考文書(マニュアル)：
     {' '.join(manual_texts)}

@@ -1,4 +1,4 @@
-/* rag-hnsw/frontend/static/script.js */
+/* frontend/static/script.js */
 
 document.addEventListener("DOMContentLoaded", function() {
     var searchInput = document.getElementById("search-input");
@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", function() {
             return `
                 <div class="result">
                     <h3>${index + 1}. <a href="${link}" target="_blank">${linkText}</a></h3>
-                    <p>Category: ${result.category}</p>
+                    <!-- <p>Category: ${result.category}</p> -->
                     ${type === 'faq' ? `<p>FAQ No: ${result.faq_no}</p>` : ''}
                     <p>${result.chunk_text || "No text available"}</p>
                     <p>Distance: ${result.distance.toFixed(4)}</p>

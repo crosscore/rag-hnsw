@@ -1,4 +1,4 @@
-# rag-hnsw/backend/main.py
+# backend/main.py
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
@@ -72,7 +72,7 @@ async def process_websocket_message(websocket: WebSocket, conn):
 
         # 1回目のAI応答の生成（目次の検索）
         toc_data = get_toc_data(conn, category)
-        first_ai_response, excluded_pages = await generate_first_ai_response(client, question, toc_data, websocket, category)
+        first_ai_response, pdf_info, chunk_texts, excluded_pages = await generate_first_ai_response(client, question, toc_data, websocket, category, conn)
 
         # 類似検索の処理
         question_vector = client.embeddings.create(
@@ -91,8 +91,8 @@ async def process_websocket_message(websocket: WebSocket, conn):
         logger.debug(f"Sent search results for question: {question[:50]}... in category: {category}")
 
         # 2回目（最終）のAI応答の生成
-        if manual_texts or faq_texts:
-            await generate_ai_response(client, question, manual_texts, faq_texts, first_ai_response, websocket)
+        if manual_texts or faq_texts or chunk_texts:
+            await generate_ai_response(client, question, manual_texts, faq_texts, chunk_texts, websocket)
         else:
             await websocket.send_json({"ai_response_chunk": "申し訳ありませんが、該当する情報が見つかりませんでした。"})
             await websocket.send_json({"ai_response_end": True})

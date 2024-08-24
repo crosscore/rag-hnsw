@@ -1,4 +1,4 @@
-# rag-hnsw/backend/utils/db_utils.py
+# backend/utils/db_utils.py
 import psycopg_pool
 from psycopg import sql
 import logging
@@ -109,3 +109,28 @@ def get_toc_data(conn, category):
     except Exception as e:
         logger.error(f"Error fetching TOC data for category {category}: {e}")
         return ""
+
+def get_chunk_text_for_pages(conn, document_table_id, start_page, end_page):
+    query = sql.SQL("""
+    SELECT chunk_text
+    FROM {table}
+    WHERE document_table_id = %s AND document_page BETWEEN %s AND %s
+    ORDER BY document_page, chunk_no
+    """).format(table=sql.Identifier(PDF_MANUAL_TABLE))
+    
+    results = execute_query(conn, query, (document_table_id, start_page, end_page))
+    return ' '.join([result[0] for result in results])
+
+def get_document_id(conn, file_name, category):
+    query = sql.SQL("""
+    SELECT dt.id
+    FROM {document_table} dt
+    JOIN {document_category_table} dct ON dt.id = dct.document_table_id
+    WHERE dt.file_name = %s AND dct.business_category = %s
+    """).format(
+        document_table=sql.Identifier(DOCUMENT_TABLE),
+        document_category_table=sql.Identifier(DOCUMENT_CATEGORY_TABLE)
+    )
+    
+    result = execute_query(conn, query, (file_name, category))
+    return result[0][0] if result else None

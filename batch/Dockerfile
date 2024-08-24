@@ -1,4 +1,4 @@
-# rag-hnsw/batch/Dockerfile
+# batch/Dockerfile
 
 FROM python:3.11-slim
 

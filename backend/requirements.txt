@@ -1,4 +1,4 @@
-# rag-hnsw/backend/requirements.txt
+# backend/requirements.txt
 openai
 python-dotenv
 boto3
