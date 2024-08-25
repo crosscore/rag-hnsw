@@ -43,49 +43,49 @@ WHERE c.business_category = [指定のカテゴリ]
 ## DOCUMENT_TABLE (PDF 情報テーブル):
 
 -   id (Primary Key): uuid, NOT NULL, UUID v4 によるランダム値
--   file_path: varchar(1024) NOT NULL, PDF のフルパス
--   file_name: varchar(1024) NOT NULL, PDF のファイル名（拡張子を含む）
+-   file_path: varchar(1024) NOT NULL, PDFのフルパス
+-   file_name: varchar(1024) NOT NULL, PDFのファイル名（拡張子を含む）
 -   document_type: SMALLINT NOT NULL, ドキュメントの種類 (1: manual(PDF), 2: faq(PDF), 3: toc(XLSX))
--   checksum: varchar(64) NOT NULL, PDF の SHA256 ハッシュ値
+-   checksum: varchar(64) NOT NULL, PDFのSHA256ハッシュ値
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 -   UNIQUE(file_path)
 
 ## DOCUMENT_CATEGORY_TABLE (PDF とカテゴリの関係テーブル):
 
--   id (Primary Key): uuid NOT NULL, UUID v4 によるランダム値
--   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLE の id カラムを参照
+-   id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
+-   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLEのidカラムを参照
 -   business_category: SMALLINT NOT NULL, 業務カテゴリ (1: 新契約, 2: 収納, 3: 保全, 4: 保険金, 5: 商品, 6: MSA ケア, 7: 手数料, 8: 代理店制度, 9: 職域推進, 10: 人事, 11: 会計)
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 -   UNIQUE(document_table_id, business_category)
 
 ## XLSX_TOC_TABLE (XLSX 目次情報テーブル)
 
--   id (Primary Key): uuid NOT NULL, UUID v4 によるランダム値
--   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLE の id カラムを参照
--   file_name: varchar(1024) NOT NULL, XLSX のファイル名（拡張子を含む）
+-   id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
+-   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLEのidカラムを参照
+-   file_name: varchar(1024) NOT NULL, XLSXのファイル名（拡張子を含む）
 -   toc_data: text NOT NULL, XLSX ファイルの 1 シート分を「","区切りの CSV 形式」でテキスト化し、行単位で改行された内容
--   checksum: varchar(64) NOT NULL, XLSX ファイルの SHA256 ハッシュ値
+-   checksum: varchar(64) NOT NULL, XLSXファイルのSHA256ハッシュ値
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 -   UNIQUE(document_table_id, file_name)
 
 ## PDF_MANUAL_TABLE (PDF マニュアル情報テーブル)
 
--   id (Primary Key): uuid NOT NULL, UUID v4 によるランダム値
--   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLE の id カラムを参照
--   chunk_no: INTEGER NOT NULL, PDF のテキストをページ毎かつ CHUNK_SIZE 毎に分割したチャンクの連番 (開始番号: 1)
--   document_page: SMALLINT NOT NULL, チャンクの存在する PDF のページ番号 (開始番号: 1)
+-   id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
+-   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLEのidカラムを参照
+-   chunk_no: INTEGER NOT NULL, PDF のテキストをページ毎かつCHUNK_SIZE毎に分割したチャンクの連番 (開始番号: 1)
+-   document_page: SMALLINT NOT NULL, チャンクの存在するPDFのページ番号 (開始番号: 1)
 -   chunk_text: text NOT NULL, チャンク毎のテキスト
--   embedding: vector(3072) NOT NULL, chunk_text のベクトルデータ
+-   embedding: vector(3072) NOT NULL, chunk_textのベクトルデータ
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 
 ## PDF_FAQ_TABLE (PDF FAQ情報テーブル)
 
--   id (Primary Key): uuid NOT NULL, UUID v4 によるランダム値
--   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLE の id カラムを参照
--   document_page: INTEGER NOT NULL, PDF のページ番号 (開始番号: 1)
--   faq_no: SMALLINT NOT NULL, ページ毎の FAQ 番号 (preprocess_faq_text 関数が返却する faq_no の数値)
--   chunk_text: text NOT NULL, ページ毎のテキスト (preprocess_faq_text 関数が返却する processed_text の文字列)
--   embedding: vector(3072) NOT NULL, chunk_text のベクトルデータ
+-   id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
+-   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLEのidカラムを参照
+-   document_page: INTEGER NOT NULL, PDFのページ番号 (開始番号: 1)
+-   faq_no: SMALLINT NOT NULL, ページ毎のFAQ番号 (preprocess_faq_text関数が返却するfaq_noの数値)
+-   chunk_text: text NOT NULL, ページ毎のテキスト (preprocess_faq_text関数が返却するprocessed_textの文字列)
+-   embedding: vector(3072) NOT NULL, chunk_textのベクトルデータ
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 
 ## テーブル作成クエリ
@@ -97,35 +97,35 @@ CREATE EXTENSION IF NOT EXISTS vector;
 ### DOCUMENT_TABLE
 
 CREATE TABLE IF NOT EXISTS {DOCUMENT_TABLE} (
-id UUID PRIMARY KEY,
-file_path VARCHAR(1024) NOT NULL,
-file_name VARCHAR(1024) NOT NULL,
-document_type SMALLINT NOT NULL,
-checksum VARCHAR(64) NOT NULL,
-created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-UNIQUE(file_path)
+    id UUID PRIMARY KEY,
+    file_path VARCHAR(1024) NOT NULL,
+    file_name VARCHAR(1024) NOT NULL,
+    document_type SMALLINT NOT NULL,
+    checksum VARCHAR(64) NOT NULL,
+    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    UNIQUE(file_path)
 );
 
 ### DOCUMENT_CATEGORY_TABLE
 
 CREATE TABLE IF NOT EXISTS {DOCUMENT_CATEGORY_TABLE} (
-id UUID PRIMARY KEY,
-document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
-business_category SMALLINT NOT NULL,
-created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-UNIQUE(document_table_id, business_category)
+    id UUID PRIMARY KEY,
+    document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
+    business_category SMALLINT NOT NULL,
+    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    UNIQUE(document_table_id, business_category)
 );
 
 ### XLSX_TOC_TABLE
 
 CREATE TABLE IF NOT EXISTS {XLSX_TOC_TABLE} (
-id UUID PRIMARY KEY,
-document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
-file_name VARCHAR(1024) NOT NULL,
-toc_data TEXT NOT NULL,
-checksum VARCHAR(64) NOT NULL,
-created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-UNIQUE(document_table_id, file_name)
+    id UUID PRIMARY KEY,
+    document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
+    file_name VARCHAR(1024) NOT NULL,
+    toc_data TEXT NOT NULL,
+    checksum VARCHAR(64) NOT NULL,
+    created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    UNIQUE(document_table_id, file_name)
 );
 
 ### PDF_MANUAL_TABLE
