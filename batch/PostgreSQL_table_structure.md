@@ -8,7 +8,7 @@
 4. SMALLINTは、PostgreSQLでは、int2と同等です。
 5. INTEGERは、PostgreSQLでは、int4と同等です。
 6. vector(3072)データ型は、pgvector拡張機能を使用しています。Dockerfileの設定により、事前にauroraコンテナのPostgreSQLにpgvector拡張機能がインストールされています。
-7. PDF_MANUAL_TABLEとPDF_FAQ_TABLEのembeddingカラムには、HNSWインデックスが作成されます。これは pgvector拡張機能によって提供される近似最近傍探索インデックスです。
+7. PDF_MANUAL_TABLEとPDF_FAQ_TABLEのembeddingカラムには、HNSWインデックスが作成されます。これはpgvector拡張機能によって提供される近似最近傍探索インデックスです。
 8. すべての外部キー（document_table_id）は、DOCUMENT_TABLEのidカラムを参照しています。
 9. CHUNK_SIZEとCHUNK_OVERLAPの設定：
     - CHUNK_SIZE: 1000 (文字)
@@ -21,7 +21,7 @@
     - これらの値は、config.pyで設定されています。
 11. DOCUMENT_CATEGORY_TABLEのdocument_table_idは、UNIQUEであるべきではありません。
 12. XLSX_TOC_TABLEは、ベクトル化しないため、HNSWインデックスは不要です。
-13. テーブル名は config.py から読み込みます。
+13. テーブル名は、config.pyから読み込みます。
 14. この構造では、1つのPDFファイルを複数のカテゴリに関連付けることができます。例えば、"/app/data/pdf/manual/新契約/test.pdf"と"/app/data/pdf/manual/収納/test.pdf"のように、同じファイル名のPDFが複数のカテゴリに属する場合があります。
 15. XLSX_TOC_TABLE は、DOCUMENT_TABLEに保存されるPDF毎に存在する目次データを格納します。
 16. PDFとXLSXファイルの関連付けは、business_categoryでフィルタリングした後、file_nameカラムの文字列（例：test.pdf, test.xlsx）から拡張子を除いて行います。
@@ -63,7 +63,7 @@ WHERE c.business_category = [指定のカテゴリ]
 -   id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
 -   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLEのidカラムを参照
 -   file_name: varchar(1024) NOT NULL, XLSXのファイル名（拡張子を含む）
--   toc_data: text NOT NULL, XLSX ファイルの 1 シート分を「","区切りの CSV 形式」でテキスト化し、行単位で改行された内容
+-   toc_data: text NOT NULL, XLSXファイルの1シート分を「","区切りのCSV形式」でテキスト化し、行単位で改行された内容
 -   checksum: varchar(64) NOT NULL, XLSXファイルのSHA256ハッシュ値
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
 -   UNIQUE(document_table_id, file_name)
