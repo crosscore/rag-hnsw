@@ -82,7 +82,7 @@ WHERE c.business_category = [指定のカテゴリ]
 
 -   id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
 -   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLEのidカラムを参照
--   document_page: INTEGER NOT NULL, PDFのページ番号 (開始番号: 1)
+-   document_page: SMALLINT NOT NULL, PDFのページ番号 (開始番号: 1)
 -   faq_no: SMALLINT NOT NULL, ページ毎のFAQ番号 (preprocess_faq_text関数が返却するfaq_noの数値)
 -   chunk_text: text NOT NULL, ページ毎のテキスト (preprocess_faq_text関数が返却するprocessed_textの文字列)
 -   embedding: vector(3072) NOT NULL, chunk_textのベクトルデータ
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS {PDF_MANUAL_TABLE} (
 CREATE TABLE IF NOT EXISTS {PDF_FAQ_TABLE} (
     id UUID PRIMARY KEY,
     document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
-    document_page INTEGER NOT NULL,
+    document_page SMALLINT NOT NULL,
     faq_no SMALLINT NOT NULL,
     chunk_text TEXT NOT NULL,
     embedding VECTOR(3072) NOT NULL,

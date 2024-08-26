@@ -106,7 +106,7 @@ def create_tables(cursor):
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
             document_table_id UUID NOT NULL REFERENCES {}(id),
-            document_page INTEGER NOT NULL,
+            document_page SMALLINT NOT NULL,
             faq_no SMALLINT NOT NULL,
             chunk_text TEXT NOT NULL,
             embedding VECTOR(3072) NOT NULL,
