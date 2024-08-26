@@ -106,12 +106,13 @@ def create_tables(cursor):
         CREATE TABLE IF NOT EXISTS {} (
             id UUID PRIMARY KEY,
             document_table_id UUID NOT NULL REFERENCES {}(id),
+            chunk_no INTEGER NOT NULL,
             document_page SMALLINT NOT NULL,
             faq_no SMALLINT NOT NULL,
             chunk_text TEXT NOT NULL,
             embedding VECTOR(3072) NOT NULL,
             created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-            UNIQUE(document_table_id, document_page, faq_no)
+            UNIQUE(document_table_id, chunk_no, document_page)
         )
         """),
         (XLSX_TOC_TABLE, """

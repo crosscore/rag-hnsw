@@ -77,16 +77,19 @@ WHERE c.business_category = [指定のカテゴリ]
 -   chunk_text: text NOT NULL, チャンク毎のテキスト
 -   embedding: vector(3072) NOT NULL, chunk_textのベクトルデータ
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
+-   UNIQUE(document_table_id, chunk_no, document_page)
 
 ## PDF_FAQ_TABLE (PDF FAQ情報テーブル)
 
 -   id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
 -   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLEのidカラムを参照
+-   chunk_no: INTEGER NOT NULL, PDFのページ番号 (開始番号: 1)
 -   document_page: SMALLINT NOT NULL, PDFのページ番号 (開始番号: 1)
 -   faq_no: SMALLINT NOT NULL, ページ毎のFAQ番号 (preprocess_faq_text関数が返却するfaq_noの数値)
 -   chunk_text: text NOT NULL, ページ毎のテキスト (preprocess_faq_text関数が返却するprocessed_textの文字列)
 -   embedding: vector(3072) NOT NULL, chunk_textのベクトルデータ
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
+-   UNIQUE(document_table_id, chunk_no, document_page)
 
 ## テーブル作成クエリ
 
@@ -143,16 +146,17 @@ CREATE TABLE IF NOT EXISTS {PDF_MANUAL_TABLE} (
 
 ### PDF_FAQ_TABLE
 
-CREATE TABLE IF NOT EXISTS {PDF_FAQ_TABLE} (
+CREATE TABLE IF NOT EXISTS {} (
     id UUID PRIMARY KEY,
-    document_table_id UUID NOT NULL REFERENCES {DOCUMENT_TABLE}(id),
+    document_table_id UUID NOT NULL REFERENCES {}(id),
+    chunk_no INTEGER NOT NULL,
     document_page SMALLINT NOT NULL,
     faq_no SMALLINT NOT NULL,
     chunk_text TEXT NOT NULL,
     embedding VECTOR(3072) NOT NULL,
     created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    UNIQUE(document_table_id, document_page, faq_no)
-);
+    UNIQUE(document_table_id, chunk_no, document_page)
+)
 
 ### HNSW インデックスの作成
 
