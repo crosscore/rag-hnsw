@@ -175,7 +175,6 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
     excluded_pages = []
     for pdf in pdf_info:
         pdf['category'] = category_name
-        # ドキュメントIDを取得
         doc_id = get_document_id(conn, pdf['file_name'], category)
         if doc_id:
             chunk_text = get_chunk_text_for_pages(conn, doc_id, pdf['start_page'], pdf['end_page'])

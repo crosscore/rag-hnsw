@@ -17,18 +17,15 @@ def process_xlsx_file(file_path, cursor):
         logger.error(f"Error reading XLSX file {file_path}: {e}")
         return
 
-    # Convert DataFrame to CSV string
     toc_data = df.to_csv(index=False)
 
-    file_name = get_file_name(file_path)  # This now includes the extension
+    file_name = get_file_name(file_path)
     checksum = calculate_checksum(file_path)
     created_date_time = get_current_datetime()
     business_category = get_business_category(file_path, TOC_XLSX_DIR)
 
-    # Use the common function to process DOCUMENT_TABLE and DOCUMENT_CATEGORY_TABLE
     document_table_id = process_file_common(cursor, file_path, file_name, DOCUMENT_TYPE_XLSX_TOC, checksum, created_date_time, business_category)
 
-    # Insert into XLSX_TOC_TABLE
     insert_toc_query = sql.SQL("""
     INSERT INTO {}
     (id, document_table_id, file_name, toc_data, checksum, created_date_time)

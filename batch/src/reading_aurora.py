@@ -20,7 +20,6 @@ def get_db_connection():
     return psycopg.connect(**db_params, options="-c timezone=Asia/Tokyo", row_factory=dict_row)
 
 def get_table_info(cursor, table_name):
-    # Get table structure
     cursor.execute("""
     SELECT column_name, data_type
     FROM information_schema.columns
@@ -28,7 +27,6 @@ def get_table_info(cursor, table_name):
     """, (table_name,))
     structure = cursor.fetchall()
 
-    # Get index information
     cursor.execute("""
     SELECT
         i.relname AS index_name,
@@ -48,11 +46,9 @@ def get_table_info(cursor, table_name):
     """, (table_name,))
     indexes = cursor.fetchall()
 
-    # Get sample data
     cursor.execute(f"SELECT * FROM {table_name} LIMIT 1;")
     sample = cursor.fetchone()
 
-    # Get record count
     cursor.execute(f"SELECT COUNT(*) FROM {table_name};")
     count = cursor.fetchone()['count']
 
@@ -119,7 +115,6 @@ def main():
                     print_table_info(table_name, info)
                     table_summary.append((table_name, info['count']))
 
-                    # Get business categories for each table
                     if 'business_category' in [col['column_name'] for col in info['structure']]:
                         categories_with_counts = get_unique_business_categories_with_counts(cursor, table_name)
                         if categories_with_counts:

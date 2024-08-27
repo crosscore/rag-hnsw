@@ -28,6 +28,8 @@
 17. csv_to_aurora.pyとtoc_to_aurora.pyの両方で、PDFとXLSXファイルの関連付けのロジックを実装する必要があります。
 18. HNSWインデックスの作成は、PDF_MANUAL_TABLEとPDF_FAQ_TABLEの両方に必要です。toc_to_aurora.pyでは、ベクトル化を行わないため、HNSWインデックスの作成は不要です。
 19. ビジネスカテゴリは、config.pyで定義されたBUSINESS_CATEGORY_MAPPINGを使用して、文字列（例："新契約"）からSMALLINT（例：1）に変換されます。
+20. PDF_MANUAL_TABLEとPDF_FAQ_TABLEのchunk_noは、各PDFファイル内で1から始まる連番として設定されます。これにより、同じdocument_table_idを持つレコード間でchunk_noが一意になります。
+21. UNIQUE制約は(document_table_id, chunk_no)の組み合わせに対して設定されており、同じPDFファイル内でチャンク番号が重複しないことを保証します。
 
 ## PDF と XLSX の関連付けクエリ例
 
@@ -72,7 +74,7 @@ WHERE c.business_category = [指定のカテゴリ]
 
 -   id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
 -   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLEのidカラムを参照
--   chunk_no: INTEGER NOT NULL, PDF のテキストをページ毎かつCHUNK_SIZE毎に分割したチャンクの連番 (開始番号: 1)
+-   chunk_no: INTEGER NOT NULL, PDFのテキストをページ毎かつCHUNK_SIZE毎に分割したチャンクの連番 (各PDFファイル内で1から開始)
 -   document_page: SMALLINT NOT NULL, チャンクの存在するPDFのページ番号 (開始番号: 1)
 -   chunk_text: text NOT NULL, チャンク毎のテキスト
 -   embedding: vector(3072) NOT NULL, chunk_textのベクトルデータ
@@ -83,7 +85,7 @@ WHERE c.business_category = [指定のカテゴリ]
 
 -   id (Primary Key): uuid NOT NULL, UUID v4によるランダム値
 -   document_table_id (Foreign Key): uuid NOT NULL, DOCUMENT_TABLEのidカラムを参照
--   chunk_no: INTEGER NOT NULL, PDFのページ番号 (開始番号: 1)
+-   chunk_no: INTEGER NOT NULL, PDFファイル内のチャンクの連番 (各PDFファイル内で1から始まる)
 -   document_page: SMALLINT NOT NULL, PDFのページ番号 (開始番号: 1)
 -   faq_no: SMALLINT NOT NULL, ページ毎のFAQ番号 (preprocess_faq_text関数が返却するfaq_noの数値)
 -   chunk_text: text NOT NULL, ページ毎のテキスト (preprocess_faq_text関数が返却するprocessed_textの文字列)

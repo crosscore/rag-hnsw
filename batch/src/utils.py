@@ -15,9 +15,8 @@ def setup_logging(module_name):
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, "unified_log.log")
 
-    # ルートロガーの設定
     root_logger = logging.getLogger()
-    if not root_logger.handlers:  # ハンドラーが既に設定されていない場合のみ設定
+    if not root_logger.handlers:
         root_logger.setLevel(logging.DEBUG)
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(logging.DEBUG)
@@ -25,10 +24,8 @@ def setup_logging(module_name):
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
 
-    # モジュール固有のロガーを返す
     return logging.getLogger(module_name)
 
-# utils.py 自体のロガーを設定
 logger = setup_logging("utils")
 
 @contextmanager
@@ -191,7 +188,6 @@ def process_file_common(cursor, file_path, file_name, document_type, checksum, c
         logger.error(f"Error inserting/updating DOCUMENT data in {DOCUMENT_TABLE}: {e}")
         raise
 
-    # Insert into DOCUMENT_CATEGORY_TABLE
     insert_category_query = sql.SQL("""
     INSERT INTO {}
     (id, document_table_id, business_category, created_date_time)

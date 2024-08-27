@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     function displayPdfInfo(pdfInfo) {
-        var pdfInfoHTML = ""; // 目次表示時のタイトルを非表示に変更
+        var pdfInfoHTML = "";
         pdfInfoHTML += pdfInfo.map((pdf, index) => {
             var link = `pdf/manual/${encodeURIComponent(pdf.category)}/${encodeURIComponent(pdf.file_name)}?start_page=${pdf.start_page}&end_page=${pdf.end_page}`;
             return `
