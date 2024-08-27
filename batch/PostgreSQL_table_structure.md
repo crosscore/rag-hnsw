@@ -44,7 +44,7 @@ WHERE c.business_category = [指定のカテゴリ]
 
 ## DOCUMENT_TABLE (PDF 情報テーブル):
 
--   id (Primary Key): uuid, NOT NULL, UUID v4 によるランダム値
+-   id (Primary Key): uuid, NOT NULL, UUID v4によるランダム値
 -   file_path: varchar(1024) NOT NULL, PDFのフルパス
 -   file_name: varchar(1024) NOT NULL, PDFのファイル名（拡張子を含む）
 -   document_type: SMALLINT NOT NULL, ドキュメントの種類 (1: manual(PDF), 2: faq(PDF), 3: toc(XLSX))

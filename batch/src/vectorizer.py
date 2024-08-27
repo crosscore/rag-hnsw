@@ -1,4 +1,4 @@
-# batch/vectorizer.py
+# batch/src/vectorizer.py
 import os
 import pandas as pd
 from pypdf import PdfReader

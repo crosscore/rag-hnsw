@@ -24,7 +24,6 @@ def process_csv_file(file_path, cursor, table_name, document_type):
     business_category = get_business_category(file_path, CSV_MANUAL_DIR if document_type == 'manual' else CSV_FAQ_DIR)
     document_table_id = process_file_common(cursor, df['file_path'].iloc[0], file_name, DOCUMENT_TYPE_PDF_MANUAL if document_type == 'manual' else DOCUMENT_TYPE_PDF_FAQ, checksum, created_date_time, business_category)
 
-    # Insert into PDF_MANUAL_TABLE or PDF_FAQ_TABLE with UPSERT
     if table_name == PDF_MANUAL_TABLE:
         insert_query = sql.SQL("""
         INSERT INTO {}
