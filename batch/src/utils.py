@@ -99,7 +99,7 @@ def create_tables(cursor):
             chunk_text TEXT NOT NULL,
             embedding VECTOR(3072) NOT NULL,
             created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-            UNIQUE(document_table_id, chunk_no, document_page)
+            UNIQUE(document_table_id, chunk_no)
         )
         """),
         (PDF_FAQ_TABLE, """
@@ -112,7 +112,7 @@ def create_tables(cursor):
             chunk_text TEXT NOT NULL,
             embedding VECTOR(3072) NOT NULL,
             created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-            UNIQUE(document_table_id, chunk_no, document_page)
+            UNIQUE(document_table_id, chunk_no)
         )
         """),
         (XLSX_TOC_TABLE, """

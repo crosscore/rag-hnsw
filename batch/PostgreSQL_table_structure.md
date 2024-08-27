@@ -77,7 +77,7 @@ WHERE c.business_category = [指定のカテゴリ]
 -   chunk_text: text NOT NULL, チャンク毎のテキスト
 -   embedding: vector(3072) NOT NULL, chunk_textのベクトルデータ
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
--   UNIQUE(document_table_id, chunk_no, document_page)
+-   UNIQUE(document_table_id, chunk_no)
 
 ## PDF_FAQ_TABLE (PDF FAQ情報テーブル)
 
@@ -89,7 +89,7 @@ WHERE c.business_category = [指定のカテゴリ]
 -   chunk_text: text NOT NULL, ページ毎のテキスト (preprocess_faq_text関数が返却するprocessed_textの文字列)
 -   embedding: vector(3072) NOT NULL, chunk_textのベクトルデータ
 -   created_date_time: timestamp with time zone NOT NULL, レコード作成日時
--   UNIQUE(document_table_id, chunk_no, document_page)
+-   UNIQUE(document_table_id, chunk_no)
 
 ## テーブル作成クエリ
 
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS {PDF_MANUAL_TABLE} (
     chunk_text TEXT NOT NULL,
     embedding VECTOR(3072) NOT NULL,
     created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    UNIQUE(document_table_id, chunk_no, document_page)
+    UNIQUE(document_table_id, chunk_no)
 );
 
 ### PDF_FAQ_TABLE
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS {} (
     chunk_text TEXT NOT NULL,
     embedding VECTOR(3072) NOT NULL,
     created_date_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    UNIQUE(document_table_id, chunk_no, document_page)
+    UNIQUE(document_table_id, chunk_no)
 )
 
 ### HNSW インデックスの作成

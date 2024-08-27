@@ -80,13 +80,13 @@ def split_text_into_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks if chunks else [text]
 
-def process_manual_page(page_text, page_num, file_info):
+def process_manual_page(page_text, page_num, file_info, chunk_counter):
     chunks = split_text_into_chunks(page_text)
     processed_data = []
-    for chunk_no, chunk in enumerate(chunks, start=1):
+    for chunk in chunks:
         response = create_embedding(chunk)
         if response is None:
-            logger.warning(f"Failed to create embedding for chunk {chunk_no} on page {page_num}")
+            logger.warning(f"Failed to create embedding for chunk {chunk_counter} on page {page_num}")
             continue
 
         data = {
@@ -96,20 +96,21 @@ def process_manual_page(page_text, page_num, file_info):
             'business_category': file_info['business_category'],
             'document_type': file_info['document_type'],
             'document_page': int(page_num),
-            'chunk_no': chunk_no,
+            'chunk_no': chunk_counter,
             'chunk_text': chunk,
             'created_date_time': file_info['created_date_time'],
             'embedding': response.data[0].embedding
         }
         processed_data.append(data)
-    return processed_data
+        chunk_counter += 1
+    return processed_data, chunk_counter
 
-def process_faq_page(page_text, page_num, file_info):
+def process_faq_page(page_text, page_num, file_info, chunk_counter):
     faq_no, processed_text = preprocess_faq_text(page_text)
     response = create_embedding(processed_text)
     if response is None:
         logger.warning(f"Failed to create embedding for FAQ page {page_num}")
-        return None
+        return None, chunk_counter
 
     data = {
         'file_name': file_info['file_name'],
@@ -118,12 +119,13 @@ def process_faq_page(page_text, page_num, file_info):
         'business_category': file_info['business_category'],
         'document_type': file_info['document_type'],
         'document_page': int(page_num),
+        'chunk_no': chunk_counter,
         'faq_no': faq_no,
         'chunk_text': processed_text,
         'created_date_time': file_info['created_date_time'],
         'embedding': response.data[0].embedding
     }
-    return [data]
+    return [data], chunk_counter + 1
 
 def process_pdf(file_path, category, document_type):
     logger.info(f"Processing {document_type} PDF: {file_path}")
@@ -142,15 +144,16 @@ def process_pdf(file_path, category, document_type):
     }
 
     processed_data = []
+    chunk_counter = 1  # Initialize chunk counter for each PDF
     for page in pages:
         page_text = page["page_content"]
         page_num = page["metadata"]["page"]
 
         if page_text.strip():  # Only process non-empty pages
             if document_type == "faq":
-                page_data = process_faq_page(page_text, page_num, file_info)
+                page_data, chunk_counter = process_faq_page(page_text, page_num, file_info, chunk_counter)
             else:  # manual
-                page_data = process_manual_page(page_text, page_num, file_info)
+                page_data, chunk_counter = process_manual_page(page_text, page_num, file_info, chunk_counter)
 
             if page_data:
                 processed_data.extend(page_data)

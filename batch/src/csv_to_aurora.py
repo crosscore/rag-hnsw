@@ -30,7 +30,8 @@ def process_csv_file(file_path, cursor, table_name, document_type):
         INSERT INTO {}
         (id, document_table_id, chunk_no, document_page, chunk_text, embedding, created_date_time)
         VALUES (%s, %s, %s, %s, %s, %s::vector(3072), %s)
-        ON CONFLICT (document_table_id, chunk_no, document_page) DO UPDATE SET
+        ON CONFLICT (document_table_id, chunk_no) DO UPDATE SET
+        document_page = EXCLUDED.document_page,
         chunk_text = EXCLUDED.chunk_text,
         embedding = EXCLUDED.embedding,
         created_date_time = EXCLUDED.created_date_time;
@@ -38,9 +39,10 @@ def process_csv_file(file_path, cursor, table_name, document_type):
     else:  # PDF_FAQ_TABLE
         insert_query = sql.SQL("""
         INSERT INTO {}
-        (id, document_table_id, document_page, chunk_no, faq_no, chunk_text, embedding, created_date_time)
+        (id, document_table_id, chunk_no, document_page, faq_no, chunk_text, embedding, created_date_time)
         VALUES (%s, %s, %s, %s, %s, %s, %s::vector(3072), %s)
-        ON CONFLICT (document_table_id, chunk_no, document_page) DO UPDATE SET
+        ON CONFLICT (document_table_id, chunk_no) DO UPDATE SET
+        document_page = EXCLUDED.document_page,
         faq_no = EXCLUDED.faq_no,
         chunk_text = EXCLUDED.chunk_text,
         embedding = EXCLUDED.embedding,
@@ -70,7 +72,7 @@ def process_csv_file(file_path, cursor, table_name, document_type):
             row_data = (
                 uuid.uuid4(),
                 document_table_id,
-                row['document_page'],
+                row['chunk_no'],
                 row['document_page'],
                 row['faq_no'],
                 row['chunk_text'],
