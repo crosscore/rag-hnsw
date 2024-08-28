@@ -20,7 +20,7 @@ def main():
     start_time = datetime.now()
     logger.info(f"Batch process started at {start_time}")
 
-    processes = ['vectorizer.py', 'csv_to_aurora.py', 'toc_to_aurora.py']
+    processes = ['drop_table.py', 'vectorizer.py', 'csv_to_aurora.py', 'toc_to_aurora.py']
 
     for process in processes:
         run_process(process)
