@@ -1,26 +1,99 @@
-# backend/utils/websocket_utils.py
-from openai import AzureOpenAI
+# backend/utils/langchain_utils.py
+from langchain_openai import AzureOpenAIEmbeddings, AzureChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from config import *
 import logging
 from fastapi import WebSocket
-from .db_utils import get_category_name, format_result, is_excluded
-from config import *
+from .db_utils import (
+    get_category_name, format_result, is_excluded, execute_search_query,
+    get_toc_data, get_chunk_text_for_pages, get_document_id
+)
 
 logger = logging.getLogger(__name__)
 
-def get_openai_client():
-    return AzureOpenAI(
+def get_langchain_client():
+    embeddings = AzureOpenAIEmbeddings(
         azure_endpoint=AZURE_OPENAI_ENDPOINT,
-        api_key=AZURE_OPENAI_API_KEY,
-        api_version=AZURE_OPENAI_API_VERSION
+        azure_deployment=AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT,
+        api_version=AZURE_OPENAI_API_VERSION,
     )
 
-async def generate_first_ai_response(client, question, toc_data, websocket: WebSocket, category, conn):
-    prompt_1st = f"""
-    ユーザーの質問に対して、最も関連が高いと考えられる"PDFファイル名", "PDF開始ページ", "PDF終了ページ"を以下の目次情報を参考に、上位2件分を解答例の通りに適切に改行して回答して下さい。
-    ただし、上位2件の内容は必ず同じ内容を重複して解答しないようにして下さい。
+    llm = AzureChatOpenAI(
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        azure_deployment=MODEL_GPT4o_DEPLOY_NAME,
+        api_version=AZURE_OPENAI_API_VERSION,
+        temperature=0.7,
+        max_tokens=1024,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
+        streaming=True
+    )
 
-    ユーザーの質問：
-    {question}
+    return embeddings, llm
+
+async def process_websocket_message_langchain(websocket: WebSocket, conn, data, embeddings, llm):
+    try:
+        question = data["question"]
+        category = data.get("category")
+
+        if not category:
+            await websocket.send_json({"error": "Category is required"})
+            return
+
+        logger.debug(f"Processing question: {question[:50]}... in category: {category}")
+
+        # Generate first AI response
+        toc_data = get_toc_data(conn, category)
+        first_response = await generate_first_ai_response(llm, toc_data, question, websocket)
+
+        # Parse the first response to get PDF info
+        pdf_info = parse_first_response(first_response, category)
+        await websocket.send_json({"pdf_info": pdf_info})
+
+        # Process search results
+        question_vector = embeddings.embed_query(question)
+
+        excluded_pages = [
+            {
+                'file_name': pdf['file_name'],
+                'start_page': pdf['start_page'],
+                'end_page': pdf['end_page']
+            } for pdf in pdf_info
+        ]
+
+        manual_results, faq_results, manual_texts, faq_texts = await process_search_results(conn, question_vector, category, excluded_pages)
+
+        if not manual_results and not faq_results:
+            await websocket.send_json({"warning": "検索結果が見つかりませんでした。"})
+        else:
+            await websocket.send_json({"manual_results": manual_results})
+            await websocket.send_json({"faq_results": faq_results})
+
+        logger.debug(f"Sent search results for question: {question[:50]}... in category: {category}")
+
+        # Generate final AI response
+        chunk_texts = [
+            get_chunk_text_for_pages(conn, get_document_id(conn, pdf['file_name'], category), pdf['start_page'], pdf['end_page'])
+            for pdf in pdf_info
+        ]
+        if manual_texts or faq_texts or chunk_texts:
+            await generate_final_ai_response(llm, chunk_texts, manual_texts, faq_texts, question, websocket)
+        else:
+            await websocket.send_json({"ai_response_chunk": "申し訳ありませんが、該当する情報が見つかりませんでした。"})
+            await websocket.send_json({"ai_response_end": True})
+            logger.info("No relevant information found for the query")
+
+    except Exception as e:
+        logger.error(f"Error processing message: {str(e)}")
+        if websocket.client_state == WebSocket.STATE_CONNECTED:
+            await websocket.send_json({"error": "An error occurred while processing your request"})
+
+async def generate_first_ai_response(llm, toc_data, question, websocket: WebSocket):
+    system_prompt = f"""
+    以下の目次情報を参考に、ユーザーの質問に対して最も関連が高いと考えられる"PDFファイル名", "PDF開始ページ", "PDF終了ページ"を上位2件分を解答例の通りに適切に改行して回答して下さい。
+    ただし、上位2件の内容は必ず同じ内容を重複して解答しないようにして下さい。
 
     カテゴリに存在する全PDFファイルの目次情報:
     {toc_data}
@@ -35,76 +108,50 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
     PDF終了ページ: 7
     """
 
-    response = client.chat.completions.create(
-        model=MODEL_GPT4o_DEPLOY_NAME,
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt_1st}
-        ],
-        stream=True
-    )
+    chat_prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{question}")
+    ])
 
-    first_response = ""
-    try:
-        for chunk in response:
-            if chunk.choices and len(chunk.choices) > 0:
-                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                    content = chunk.choices[0].delta.content
-                    if content:
-                        first_response += content
-                        await websocket.send_json({"first_ai_response_chunk": content})
-            else:
-                logger.warning("Received an empty chunk from OpenAI API")
-    except Exception as e:
-        logger.error(f"Error processing AI response: {str(e)}")
-        await websocket.send_json({"error": "Error generating first AI response"})
-    finally:
-        await websocket.send_json({"first_ai_response_end": True})
-        logger.debug(f"Sent streaming first AI response for question: {question[:50]}...")
+    chain = chat_prompt | llm | StrOutputParser()
 
-    return first_response
+    response = ""
+    async for chunk in chain.astream({"question": question}):
+        response += chunk
+        await websocket.send_json({"first_ai_response_chunk": chunk})
 
-async def generate_final_ai_response(client, question, chunk_texts, manual_texts, faq_texts, websocket: WebSocket):
-    prompt_2nd = f"""
-    ユーザーの質問に対して、以下の参考文書を元に回答して下さい。
+    await websocket.send_json({"first_ai_response_end": True})
+    return response
 
-    ユーザーの質問：
-    {question}
+async def generate_final_ai_response(llm, chunk_texts, manual_texts, faq_texts, question, websocket: WebSocket):
+    system_prompt = f"""
+    以下の情報を参考に、ユーザーの質問に答えてください。
 
     参考文書(目次情報)：
     {' '.join(chunk_texts)}
 
-    参考文書(マニュアル)：
+    マニュアル情報:
     {' '.join(manual_texts)}
 
-    参考文書(Q&A):
+    FAQ情報:
     {' '.join(faq_texts)}
     """
 
-    response = client.chat.completions.create(
-        model=MODEL_GPT4o_DEPLOY_NAME,
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt_2nd}
-        ],
-        stream=True
-    )
+    chat_prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{question}")
+    ])
+
+    chain = chat_prompt | llm | StrOutputParser()
 
     try:
-        for chunk in response:
-            if chunk.choices and len(chunk.choices) > 0:
-                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
-                    content = chunk.choices[0].delta.content
-                    if content:
-                        await websocket.send_json({"ai_response_chunk": content})
-            else:
-                logger.warning("Received an empty chunk from OpenAI API")
+        async for chunk in chain.astream({"question": question}):
+            await websocket.send_json({"ai_response_chunk": chunk})
     except Exception as e:
-        logger.error(f"Error processing AI response: {str(e)}")
-        await websocket.send_json({"error": "Error generating AI response"})
+        logger.error(f"Error generating final AI response: {str(e)}")
+        await websocket.send_json({"error": f"Error generating final AI response: {str(e)}"})
     finally:
         await websocket.send_json({"ai_response_end": True})
-        logger.debug(f"Sent streaming AI response for question: {question[:50]}...")
 
 def parse_first_response(first_response, category):
     pdf_info = []
