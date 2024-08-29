@@ -95,16 +95,16 @@ def get_toc_data(conn, category):
             document_table=sql.Identifier(DOCUMENT_TABLE),
             document_category_table=sql.Identifier(DOCUMENT_CATEGORY_TABLE)
         )
-        
+
         results = execute_query(conn, query, (category,))
-        
+
         if not results:
             logger.warning(f"No TOC data found for category: {category}")
             return ""
-        
+
         # 複数のTOC dataを結合
         all_toc_data = "\n\n".join([result[0] for result in results])
-        
+
         return all_toc_data
     except Exception as e:
         logger.error(f"Error fetching TOC data for category {category}: {e}")
@@ -117,7 +117,7 @@ def get_chunk_text_for_pages(conn, document_table_id, start_page, end_page):
     WHERE document_table_id = %s AND document_page BETWEEN %s AND %s
     ORDER BY document_page, chunk_no
     """).format(table=sql.Identifier(PDF_MANUAL_TABLE))
-    
+
     results = execute_query(conn, query, (document_table_id, start_page, end_page))
     return ' '.join([result[0] for result in results])
 
@@ -131,6 +131,51 @@ def get_document_id(conn, file_name, category):
         document_table=sql.Identifier(DOCUMENT_TABLE),
         document_category_table=sql.Identifier(DOCUMENT_CATEGORY_TABLE)
     )
-    
+
     result = execute_query(conn, query, (file_name, category))
     return result[0][0] if result else None
+
+def get_document_info(conn, document_table_id):
+    query = sql.SQL("""
+    SELECT file_path, file_name FROM {} WHERE id = %s
+    """).format(sql.Identifier(DOCUMENT_TABLE))
+
+    result = execute_query(conn, query, (document_table_id,))
+    return result[0] if result else (None, None)
+
+def get_category_name(category_id):
+    return next((name for name, value in BUSINESS_CATEGORY_MAPPING.items() if value == category_id), None)
+
+def format_result(conn, result, category, document_type):
+    if document_type == "manual":
+        document_table_id, chunk_no, document_page, chunk_text, distance = result
+    elif document_type == "faq":
+        document_table_id, document_page, faq_no, chunk_text, distance = result
+    else:
+        raise ValueError(f"Invalid document type: {document_type}")
+
+    file_path, file_name = get_document_info(conn, document_table_id)
+    category_name = get_category_name(category)
+
+    formatted_result = {
+        "file_name": str(file_name),
+        "page": int(document_page),
+        "chunk_text": str(chunk_text),
+        "distance": float(distance),
+        "category": category_name,
+        "document_type": document_type,
+        "link_text": f"/{document_type}/{category_name}/{file_name}, p.{document_page}",
+        "link": f"pdf/{document_type}/{category_name}/{file_name}?page={document_page}",
+    }
+
+    if document_type == "faq":
+        formatted_result["faq_no"] = int(faq_no)
+
+    return formatted_result
+
+def is_excluded(result, excluded_pages):
+    for excluded in excluded_pages:
+        if (result['file_name'] == excluded['file_name'] and
+            excluded['start_page'] <= result['page'] <= excluded['end_page']):
+            return True
+    return False

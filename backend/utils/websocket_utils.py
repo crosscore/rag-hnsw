@@ -3,7 +3,7 @@ from fastapi import WebSocket
 from openai import AzureOpenAI
 from psycopg import sql
 import logging
-from .db_utils import execute_query, execute_search_query, get_document_id, get_chunk_text_for_pages
+from .db_utils import execute_query, execute_search_query, get_document_id, get_chunk_text_for_pages, is_excluded
 from config import *
 
 logger = logging.getLogger(__name__)
@@ -73,13 +73,6 @@ async def process_search_results(conn, question_vector, category, excluded_pages
     logger.info(f"Found {len(formatted_manual_results)} unique manual results and {len(formatted_faq_results)} unique FAQ results")
 
     return formatted_manual_results, formatted_faq_results, manual_texts, faq_texts
-
-def is_excluded(result, excluded_pages):
-    for excluded in excluded_pages:
-        if (result['file_name'] == excluded['file_name'] and
-            excluded['start_page'] <= result['page'] <= excluded['end_page']):
-            return True
-    return False
 
 def format_manual_result(conn, result, category):
     document_table_id, chunk_no, document_page, chunk_text, distance = result
