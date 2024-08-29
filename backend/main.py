@@ -5,7 +5,7 @@ from starlette.websockets import WebSocketDisconnect, WebSocketState
 import logging
 from utils.pdf_utils import get_pdf
 from utils.db_utils import get_db_connection, get_available_categories
-from utils.websocket_utils import get_openai_client, process_websocket_message_openai
+from utils.langchain_utils import get_langchain_client, process_websocket_message_langchain
 from config import *
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = get_openai_client()
+embeddings, llm = get_langchain_client()
 
 @app.get("/categories")
 async def get_categories():
@@ -47,7 +47,7 @@ async def websocket_endpoint(websocket: WebSocket):
         with db_pool.connection() as conn:
             while websocket.client_state == WebSocketState.CONNECTED:
                 data = await websocket.receive_json()
-                await process_websocket_message_openai(websocket, conn, data, client)
+                await process_websocket_message_langchain(websocket, conn, data, embeddings, llm)
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
     except Exception as e:
