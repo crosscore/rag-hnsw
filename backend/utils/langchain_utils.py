@@ -2,10 +2,7 @@
 from openai import AzureOpenAI
 import logging
 from fastapi import WebSocket
-from .db_utils import (
-    get_category_name, format_result, is_excluded, execute_search_query,
-    get_toc_data, get_chunk_text_for_pages, get_document_id
-)
+from .db_utils import get_category_name, format_result, is_excluded
 from config import *
 
 logger = logging.getLogger(__name__)
@@ -16,66 +13,6 @@ def get_openai_client():
         api_key=AZURE_OPENAI_API_KEY,
         api_version=AZURE_OPENAI_API_VERSION
     )
-
-async def process_websocket_message_openai(websocket: WebSocket, conn, data, client):
-    try:
-        question = data["question"]
-        category = data.get("category")
-
-        if not category:
-            await websocket.send_json({"error": "Category is required"})
-            return
-
-        logger.debug(f"Processing question: {question[:50]}... in category: {category}")
-
-        # Generate first AI response
-        toc_data = get_toc_data(conn, category)
-        first_response = await generate_first_ai_response(client, question, toc_data, websocket, category, conn)
-
-        # Parse the first response to get PDF info
-        pdf_info = parse_first_response(first_response, category)
-        await websocket.send_json({"pdf_info": pdf_info})
-
-        # Process search results
-        question_vector = client.embeddings.create(
-            input=question,
-            model=AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT
-        ).data[0].embedding
-
-        excluded_pages = [
-            {
-                'file_name': pdf['file_name'],
-                'start_page': pdf['start_page'],
-                'end_page': pdf['end_page']
-            } for pdf in pdf_info
-        ]
-
-        manual_results, faq_results, manual_texts, faq_texts = await process_search_results(conn, question_vector, category, excluded_pages)
-
-        if not manual_results and not faq_results:
-            await websocket.send_json({"warning": "検索結果が見つかりませんでした。"})
-        else:
-            await websocket.send_json({"manual_results": manual_results})
-            await websocket.send_json({"faq_results": faq_results})
-
-        logger.debug(f"Sent search results for question: {question[:50]}... in category: {category}")
-
-        # Generate final AI response
-        chunk_texts = [
-            get_chunk_text_for_pages(conn, get_document_id(conn, pdf['file_name'], category), pdf['start_page'], pdf['end_page'])
-            for pdf in pdf_info
-        ]
-        if manual_texts or faq_texts or chunk_texts:
-            await generate_final_ai_response(client, question, chunk_texts, manual_texts, faq_texts, websocket)
-        else:
-            await websocket.send_json({"ai_response_chunk": "申し訳ありませんが、該当する情報が見つかりませんでした。"})
-            await websocket.send_json({"ai_response_end": True})
-            logger.info("No relevant information found for the query")
-
-    except Exception as e:
-        logger.error(f"Error processing message: {str(e)}")
-        if websocket.client_state == WebSocket.STATE_CONNECTED:
-            await websocket.send_json({"error": "An error occurred while processing your request"})
 
 async def generate_first_ai_response(client, question, toc_data, websocket: WebSocket, category, conn):
     prompt_1st = f"""

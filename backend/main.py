@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect, WebSocketState
 import logging
 from utils.pdf_utils import get_pdf
-from utils.db_utils import get_db_connection, get_available_categories, get_toc_data
-from utils.websocket_utils import get_openai_client, process_search_results, generate_final_ai_response, generate_first_ai_response
+from utils.db_utils import get_db_connection, get_available_categories
+from utils.websocket_utils import get_openai_client, process_websocket_message_openai
 from config import *
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -46,7 +46,8 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         with db_pool.connection() as conn:
             while websocket.client_state == WebSocketState.CONNECTED:
-                await process_websocket_message(websocket, conn)
+                data = await websocket.receive_json()
+                await process_websocket_message_openai(websocket, conn, data, client)
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
     except Exception as e:
@@ -56,51 +57,6 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info("WebSocket connection closed")
         if websocket.client_state == WebSocketState.CONNECTED:
             await websocket.close()
-
-async def process_websocket_message(websocket: WebSocket, conn):
-    try:
-        data = await websocket.receive_json()
-        question = data["question"]
-        category = data.get("category")
-
-        if not category:
-            await websocket.send_json({"error": "Category is required"})
-            return
-
-        logger.debug(f"Processing question: {question[:50]}... in category: {category}")
-
-        # 1回目のAI応答の生成（目次の検索）
-        toc_data = get_toc_data(conn, category)
-        first_ai_response, pdf_info, chunk_texts, excluded_pages = await generate_first_ai_response(client, question, toc_data, websocket, category, conn)
-
-        # 類似検索の処理
-        question_vector = client.embeddings.create(
-            input=question,
-            model=AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT
-        ).data[0].embedding
-
-        manual_results, faq_results, manual_texts, faq_texts = await process_search_results(conn, question_vector, category, excluded_pages)
-
-        if not manual_results and not faq_results:
-            await websocket.send_json({"warning": "検索結果が見つかりませんでした。"})
-        else:
-            await websocket.send_json({"manual_results": manual_results})
-            await websocket.send_json({"faq_results": faq_results})
-
-        logger.debug(f"Sent search results for question: {question[:50]}... in category: {category}")
-
-        # 2回目（最終）のAI応答の生成
-        if manual_texts or faq_texts or chunk_texts:
-            await generate_final_ai_response(client, question, manual_texts, faq_texts, chunk_texts, websocket)
-        else:
-            await websocket.send_json({"ai_response_chunk": "申し訳ありませんが、該当する情報が見つかりませんでした。"})
-            await websocket.send_json({"ai_response_end": True})
-            logger.info("No relevant information found for the query")
-
-    except Exception as e:
-        logger.error(f"Error processing message: {str(e)}")
-        if websocket.client_state == WebSocketState.CONNECTED:
-            await websocket.send_json({"error": "An error occurred while processing your request"})
 
 if __name__ == "__main__":
     import uvicorn
