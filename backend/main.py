@@ -5,7 +5,7 @@ from starlette.websockets import WebSocketDisconnect, WebSocketState
 import logging
 from utils.pdf_utils import get_pdf
 from utils.db_utils import get_db_connection, get_available_categories, get_toc_data
-from utils.websocket_utils import get_openai_client, process_search_results, generate_ai_response, generate_first_ai_response
+from utils.websocket_utils import get_openai_client, process_search_results, generate_final_ai_response, generate_first_ai_response
 from config import *
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -91,7 +91,7 @@ async def process_websocket_message(websocket: WebSocket, conn):
 
         # 2回目（最終）のAI応答の生成
         if manual_texts or faq_texts or chunk_texts:
-            await generate_ai_response(client, question, manual_texts, faq_texts, chunk_texts, websocket)
+            await generate_final_ai_response(client, question, manual_texts, faq_texts, chunk_texts, websocket)
         else:
             await websocket.send_json({"ai_response_chunk": "申し訳ありませんが、該当する情報が見つかりませんでした。"})
             await websocket.send_json({"ai_response_end": True})

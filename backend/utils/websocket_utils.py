@@ -189,7 +189,7 @@ async def generate_first_ai_response(client, question, toc_data, websocket: WebS
 
     return first_response, pdf_info, chunk_texts, excluded_pages
 
-async def generate_ai_response(client, question, chunk_texts, manual_texts, faq_texts, websocket: WebSocket):
+async def generate_final_ai_response(client, question, chunk_texts, manual_texts, faq_texts, websocket: WebSocket):
     prompt_2nd = f"""
     ユーザーの質問に対して、以下の参考文書を元に回答して下さい。
 
