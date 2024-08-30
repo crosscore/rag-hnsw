@@ -66,7 +66,7 @@ def preprocess_faq_text(text):
     faq_no_match = re.search(r'#(ID|No)\n(\d+)', text)
     faq_no = int(faq_no_match.group(2)) if faq_no_match else None
 
-    processed_text_match = re.search(r'#質問・疑問\n(.*)', text, re.DOTALL)
+    processed_text_match = re.search(r'(#質問・疑問\n.*)', text, re.DOTALL)
     processed_text = processed_text_match.group(1) if processed_text_match else text
 
     return faq_no, processed_text.strip()
